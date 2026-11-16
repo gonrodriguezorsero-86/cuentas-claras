@@ -641,7 +641,7 @@ function guardar(){
   cs.forEach((c,i)=>{
     const esG3=items[i].tid==="g3";
     queue({op:"set",id:newId(),data:{fecha,clinica,paciente:pac,grupo,tid:items[i].tid,tratamiento:c.t.n,piezas:c.piezas,detalle:c.detalle,
-      precioUnit:c.t.p,cantidad:c.cant,prestacion:esG3?0:c.total,g3:esG3?c.total:0,total:c.total,nota,dictado,labPend:esG3,estado:"pendiente",cobrado:0,fechaCobro:"",creado:Date.now()+i}});
+      precioUnit:c.t.p,cantidad:c.cant,prestacion:esG3?0:c.total,g3:esG3?c.total:0,total:c.total,nota,dictado,labPend:(esG3||/dise[ñn]|\bfab|g3|encerad|laboratorio/i.test(c.t.n)),estado:"pendiente",cobrado:0,fechaCobro:"",creado:Date.now()+i}});
   });
   const tot=cs.reduce((s,c)=>s+c.total,0);
   status(`Guardado: ${pac}, ${cs.length} tratamiento${cs.length>1?"s":""}, ${money(tot)}.`);

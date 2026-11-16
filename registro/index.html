@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Registro de Trabajos</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trabajos">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f3f5f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101614" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: una columna tipo ficha clínica; arriba el dictado, debajo los tratamientos con su odontograma, abajo la cuenta por paciente */
+:root{
+  --bg:#f3f5f4; --card:#ffffff; --fg:#17201d; --muted:#5d6b66; --line:#d6dedb;
+  --accent:#0f6b5c; --accent-ink:#ffffff; --accent-soft:#e1efeb; --warn:#9a5b00; --warn-soft:#fbefdc; --ok:#1d6b3a;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#101614; --card:#18201d; --fg:#e7eeeb; --muted:#9aaba5; --line:#2b3632;
+  --accent:#4fb8a3; --accent-ink:#06211b; --accent-soft:#1d332e; --warn:#e6b25e; --warn-soft:#33281a; --ok:#6fcf93; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101614; --card:#18201d; --fg:#e7eeeb; --muted:#9aaba5; --line:#2b3632;
+  --accent:#4fb8a3; --accent-ink:#06211b; --accent-soft:#1d332e; --warn:#e6b25e; --warn-soft:#33281a; --ok:#6fcf93; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
+.wrap{max-width:640px;margin:0 auto;padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(48px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-size:22px;margin:0;font-weight:600;letter-spacing:-.01em}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0;font-weight:600}
+.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px}
+.tabs button{border:0;background:transparent;color:var(--muted);padding:6px 12px;border-radius:7px;font:inherit;font-size:14px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+textarea,input,select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%;min-width:0}
+textarea{min-height:96px;resize:vertical}
+textarea:focus,input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row>*{min-width:0}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.btn{border:0;border-radius:9px;padding:11px 14px;font:inherit;font-weight:600;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions .btn{flex:1 1 auto}
+.tx{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.tx-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tx-head b{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.tx select{background:var(--card)}
+.teeth{display:grid;grid-template-columns:repeat(16,minmax(0,1fr));gap:3px;font-family:var(--mono);font-size:11px}
+.teeth button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:5px;padding:6px 0;cursor:pointer;font:inherit}
+.teeth button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.teeth .mid{border-right:2px solid var(--muted)}
+.arch{font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+.faces{display:flex;flex-direction:column;gap:6px}
+.face-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.face-row .n{font-family:var(--mono);font-weight:500;width:28px}
+.face-row button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;min-width:34px;padding:5px 6px;font:inherit;font-size:13px;cursor:pointer}
+.face-row button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.sub{display:flex;justify-content:space-between;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted)}
+.total{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-variant-numeric:tabular-nums;gap:12px}
+.total strong{font-size:20px}
+.msg{font-size:14px;padding:8px 10px;border-radius:8px;background:var(--accent-soft)}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}
+.list{display:flex;flex-direction:column;gap:18px}
+.pac{display:flex;flex-direction:column;gap:2px}
+.pac-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-bottom:2px solid var(--fg);padding-bottom:4px;margin-bottom:2px}
+.pac-head h3{font-size:21px;line-height:1.2;margin:0;font-weight:600;letter-spacing:-.01em;text-wrap:balance;min-width:0}
+.pac-head span{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:16px;font-weight:600;white-space:nowrap}
+.pac-meta{font-size:12px;color:var(--muted)}
+.item{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px 0;border-top:1px solid var(--line)}
+.pac-meta+.item{border-top:0}
+.item .t{font-weight:500}
+.item .s{font-size:13px;color:var(--muted)}
+.item .p{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.chip{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);margin-left:6px;font-weight:500}
+.chip.ok{background:var(--accent-soft);color:var(--ok)}
+.item .main{cursor:pointer;min-width:0}
+.item .main:hover .t{color:var(--accent)}
+.pac-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.item .ops{grid-column:1/-1;display:flex;gap:12px}
+.link{background:none;border:0;color:var(--accent);font:inherit;font-size:13px;padding:0;cursor:pointer}
+.sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sum div{background:var(--bg);border-radius:8px;padding:8px}
+.sum span{display:block;font-size:12px;color:var(--muted)}
+.sum b{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:15px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td{padding:6px 4px;border-top:1px solid var(--line)}
+td input{padding:6px;font-family:var(--mono)}
+td input.nm{font-family:var(--sans)}
+th{font-size:12px;color:var(--muted);font-weight:500;text-align:left;padding:4px}
+td.c{text-align:center;width:56px}
+td.c input{width:auto}
+.tw{overflow-x:auto}
+.ct{font-size:14px}
+.ct th{border-bottom:2px solid var(--fg);padding:6px 6px}
+.ct td{padding:8px 6px;vertical-align:middle}
+.ct .r{text-align:right}
+.ct .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ct tr.pr{cursor:pointer}
+.ct tr.pr td{border-top:1px solid var(--line)}
+.ct tr.pr[aria-expanded="true"] td{background:var(--accent-soft);border-top-color:var(--accent)}
+.ct tr.pr:hover td{background:var(--accent-soft)}
+.ct .pn{font-weight:600;font-size:16px}
+.ct .pc{font-size:12px;color:var(--muted);white-space:nowrap}
+.ct .debe{color:var(--warn);font-weight:600}
+.ct .ok{color:var(--ok)}
+.ct .chev{width:18px;color:var(--muted);text-align:center;padding-left:0;padding-right:0}
+.ct tr.it{cursor:pointer}
+.ct tr.it td{border-top:1px dashed var(--line);padding-top:6px;padding-bottom:6px}
+.ct tr.it td:first-child{padding-left:16px}
+.ct tr.it:hover .itt{color:var(--accent)}
+.ct .itt{font-size:14px}
+.ct .its{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.ct button.chip{border:0;cursor:pointer;font:inherit;font-size:11px;margin:0;white-space:nowrap}
+.ct tr.foot td{border-top:0;padding:4px 6px 10px 16px}
+@media (max-width:420px){.row{grid-template-columns:1fr}.sum b{font-size:13px}.pac-head h3{font-size:19px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Registro de Trabajos</h1>
+    <div class="tabs" role="tablist">
+      <button id="tab-cargar" role="tab" aria-selected="true">Cargar</button>
+      <button id="tab-cuenta" role="tab" aria-selected="false">Cuenta</button>
+      <button id="tab-precios" role="tab" aria-selected="false">Precios</button>
+      <button id="tab-ajustes" role="tab" aria-selected="false">Ajustes</button>
+    </div>
+  </header>
+
+  <div id="sync" class="msg warn" hidden></div>
+  <div id="status" class="msg" hidden></div>
+
+  <!-- CARGAR -->
+  <section id="v-cargar" class="card">
+    <div id="edit-banner" class="msg" hidden>Editando un trabajo guardado. Corregí lo que necesites y tocá Guardar cambios.</div>
+    <h2 id="h-dictado">Dictado</h2>
+    <textarea id="dictado" placeholder="Ej: Juan Pérez, diseño y fabricación G3 de corona en la 36 y la instalación. Clase 2 mesio oclusal en la 37."></textarea>
+    <p class="hint">Tocá el campo y usá el micrófono del teclado. Podés dictar varios tratamientos juntos, con sus piezas y caras.</p>
+    <div class="actions">
+      <button class="btn" id="btn-interpretar">Interpretar dictado</button>
+    </div>
+
+    <h2>Trabajo</h2>
+    <div class="row">
+      <label>Fecha<input type="date" id="f-fecha"></label>
+      <label>Clínica<input id="f-clinica" value="Pergamino"></label>
+    </div>
+    <label>Paciente<input id="f-paciente" autocomplete="off"></label>
+    <div id="items" style="display:flex;flex-direction:column;gap:10px"></div>
+    <button class="btn ghost" id="btn-add-item">+ Agregar otro tratamiento</button>
+    <label>Nota<input id="f-nota" autocomplete="off"></label>
+    <div id="cobro" class="tx" hidden>
+      <div class="tx-head"><b>Pago</b><button class="link" id="btn-pago-total">Pagó todo</button></div>
+      <div class="row">
+        <label>Monto cobrado<input type="number" id="f-cobrado" inputmode="numeric"></label>
+        <label>Fecha de cobro<input type="date" id="f-fcobro"></label>
+      </div>
+      <p class="hint" id="f-saldo"></p>
+    </div>
+    <div class="total"><span id="f-detalle">—</span><strong id="f-total">$0</strong></div>
+    <div class="actions">
+      <button class="btn" id="btn-guardar">Guardar trabajo</button>
+      <button class="btn ghost" id="btn-limpiar">Limpiar</button>
+    </div>
+    <button class="link" id="btn-borrar" hidden style="align-self:flex-start;color:var(--warn)">Borrar este trabajo</button>
+  </section>
+
+  <!-- CUENTA -->
+  <section id="v-cuenta" class="card" hidden>
+    <div class="row">
+      <label>Mes<input type="month" id="c-mes"></label>
+      <label>Clínica<select id="c-clinica"></select></label>
+    </div>
+    <div class="sum">
+      <div><span>Prestaciones</span><b id="s-prest">$0</b></div>
+      <div><span>Laboratorio G3</span><b id="s-g3">$0</b></div>
+      <div><span>Pendiente</span><b id="s-pend">$0</b></div>
+    </div>
+    <div class="row">
+      <label>Buscar paciente<input id="c-buscar" type="search" autocomplete="off" placeholder="Nombre"></label>
+      <label style="flex-direction:row;align-items:center;gap:8px;color:var(--fg);align-self:end;padding-bottom:10px"><input type="checkbox" id="c-saldo" style="width:auto"> Solo con saldo</label>
+    </div>
+    <div id="lista"></div>
+    <div class="actions">
+      <button class="btn" id="btn-copiar">Copiar resumen</button>
+      <button class="btn ghost" id="btn-csv">Descargar CSV</button>
+      <button class="btn ghost" id="btn-liquidar">Marcar mes como cobrado</button>
+    </div>
+  </section>
+
+  <!-- PRECIOS -->
+  <section id="v-precios" class="card" hidden>
+    <h2>Lista de precios</h2>
+    <label>Tipo de cambio (ARS por USD)<input type="number" id="p-tc"></label>
+    <div class="tw"><table>
+      <thead><tr><th>Trabajo</th><th>Precio</th><th>Por pieza</th><th></th></tr></thead>
+      <tbody id="p-tabla"></tbody></table></div>
+    <div class="actions"><button class="btn" id="btn-precios">Guardar cambios</button></div>
+    <h2>Agregar trabajo</h2>
+    <label>Nombre<input id="n-nombre" placeholder="Ej: Clase 2 mediana" autocomplete="off"></label>
+    <div class="row">
+      <label>Precio<input type="number" id="n-precio" placeholder="271400"></label>
+      <label style="flex-direction:row;align-items:center;gap:8px;color:var(--fg);align-self:end;padding-bottom:10px"><input type="checkbox" id="n-pieza" style="width:auto" checked> Se cobra por pieza</label>
+    </div>
+    <div class="actions"><button class="btn ghost" id="btn-agregar">Agregar a la lista</button></div>
+  </section>
+
+  <!-- AJUSTES -->
+  <section id="v-ajustes" class="card" hidden>
+    <h2>Sincronización</h2>
+    <p class="hint">Con esto Registro de Trabajos y G3 Lab (celular y PC) comparten los mismos datos. Se carga una sola vez en cada dispositivo.</p>
+    <label>Repositorio de datos<input id="a-repo" placeholder="gonrodriguezorsero-86/g3-datos" autocapitalize="off" autocomplete="off"></label>
+    <label>Clave de acceso<input id="a-token" type="password" autocomplete="off"></label>
+    <div class="actions"><button class="btn" id="btn-sync">Guardar y sincronizar</button></div>
+    <p class="hint" id="a-estado"></p>
+    <h2>Laboratorio</h2>
+    <p class="hint">Cada "Diseño y fabricación G3" que cargues acá aparece solo en G3 Lab como trabajo pendiente. Y cada trabajo de G3 Lab que marques Entregado con precio aparece acá para cobrarlo.</p>
+    <h2>Respaldo</h2>
+    <div class="actions"><button class="btn ghost" id="btn-export">Descargar respaldo</button><button class="btn ghost" id="btn-import">Importar respaldo</button></div>
+    <input type="file" id="f-import" accept=".json,application/json" hidden>
+  </section>
+</div>
+
+<script>
+/* Datos compartidos: copia local + sincronización con un repositorio privado de GitHub */
+const G3Sync = (function(){
+  const CK="g3_sync";
+  const lsGet=(k,d)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } };
+  const lsSet=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
+  let creds=lsGet(CK,{repo:"",token:""});
+  const stores=[]; const listeners=[];
+  let estado={ok:false,msg:"Sin configurar",cuando:0};
+  const setEstado=(ok,msg)=>{ estado={ok,msg,cuando:Date.now()}; listeners.forEach(f=>{ try{f(estado);}catch(e){} }); };
+  const enc=s=>{ const b=new TextEncoder().encode(s); let o=""; for(let i=0;i<b.length;i+=0x8000) o+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(o); };
+  const dec=s=>{ const bin=atob(String(s).replace(/\s/g,"")); const b=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i); return new TextDecoder().decode(b); };
+  const headers=()=>({Authorization:"Bearer "+creds.token,Accept:"application/vnd.github+json"});
+  const url=f=>"https://api.github.com/repos/"+creds.repo+"/contents/"+f;
+  async function ghGet(f){
+    const r=await fetch(url(f),{headers:headers(),cache:"no-store"});
+    if(r.status===404) return null;
+    if(r.status===401||r.status===403) throw new Error("La clave no es válida o no tiene permiso sobre el repositorio.");
+    if(!r.ok) throw new Error("GitHub respondió "+r.status);
+    const j=await r.json(); const t=dec(j.content||"");
+    return {sha:j.sha,obj:t.trim()?JSON.parse(t):{}};
+  }
+  async function ghPut(f,obj,sha){
+    const body={message:"sync",content:enc(JSON.stringify(obj))}; if(sha) body.sha=sha;
+    const r=await fetch(url(f),{method:"PUT",headers:Object.assign({"Content-Type":"application/json"},headers()),body:JSON.stringify(body)});
+    if(r.status===409||r.status===422) return false;
+    if(r.status===404) throw new Error("No encuentro el repositorio "+creds.repo+". Revisá el nombre y el permiso de la clave.");
+    if(!r.ok) throw new Error("GitHub respondió "+r.status);
+    return true;
+  }
+  function Store(file,key){
+    const S=lsGet(key,{items:{},cfg:null,cfgM:0}); if(!S.items) S.items={};
+    const subs=[];
+    const emit=()=>{ lsSet(key,S); subs.forEach(f=>{ try{f();}catch(e){} }); };
+    const st={
+      file,
+      all:()=>Object.values(S.items).filter(x=>!x._del),
+      get:id=>{ const x=S.items[id]; return x&&!x._del?x:null; },
+      put(id,data){ S.items[id]=Object.assign({},data,{id,_m:Date.now()}); delete S.items[id]._del; emit(); kick(); },
+      patch(id,data){ const x=st.get(id); if(!x){ const e=new Error("not_found"); e.code="not_found"; throw e; } S.items[id]=Object.assign({},x,data,{id,_m:Date.now()}); emit(); kick(); },
+      del(id){ S.items[id]={id,_del:true,_m:Date.now()}; emit(); kick(); },
+      cfg:()=>S.cfg, cfgM:()=>S.cfgM||0,
+      setCfg(c){ S.cfg=c; S.cfgM=Date.now(); emit(); kick(); },
+      onChange(f){ subs.push(f); },
+      exportar:()=>JSON.parse(JSON.stringify(S)),
+      importar(o){ Object.keys((o&&o.items)||{}).forEach(id=>{ const r=o.items[id], l=S.items[id]; if(!l||(r._m||0)>(l._m||0)) S.items[id]=r; }); if(o&&o.cfg&&(o.cfgM||0)>(S.cfgM||0)){ S.cfg=o.cfg; S.cfgM=o.cfgM; } emit(); kick(); },
+      async sync(){
+        for(let n=0;n<3;n++){
+          const rem=await ghGet(file); let cambio=false, subir=!rem;
+          if(rem){
+            const ri=rem.obj.items||{};
+            Object.keys(ri).forEach(id=>{ const l=S.items[id]; if(!l||(ri[id]._m||0)>(l._m||0)){ S.items[id]=ri[id]; cambio=true; } });
+            Object.keys(S.items).forEach(id=>{ if(!ri[id]||(S.items[id]._m||0)>(ri[id]._m||0)) subir=true; });
+            if((rem.obj.cfgM||0)>(S.cfgM||0)){ S.cfg=rem.obj.cfg; S.cfgM=rem.obj.cfgM; cambio=true; }
+            else if((S.cfgM||0)>(rem.obj.cfgM||0)) subir=true;
+          }
+          if(cambio) emit();
+          if(!subir) return;
+          if(await ghPut(file,{v:1,items:S.items,cfg:S.cfg,cfgM:S.cfgM||0},rem&&rem.sha)) return;
+        }
+        throw new Error("No pude subir los cambios; se reintenta solo.");
+      }
+    };
+    stores.push(st); return st;
+  }
+  let busy=false, again=false, timer=null, despues=[];
+  async function syncAll(){
+    if(!creds.repo||!creds.token){ setEstado(false,"Sin configurar: los datos quedan solo en este dispositivo."); return false; }
+    if(busy){ again=true; return false; }
+    busy=true;
+    try{
+      for(const s of stores) await s.sync();
+      for(const f of despues){ try{ if(f()) again=true; }catch(e){} }
+      setEstado(true,"Sincronizado "+new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));
+    }catch(e){ setEstado(false, navigator.onLine===false ? "Sin conexión: se sincroniza cuando vuelva internet." : (e.message||"No se pudo sincronizar.")); }
+    busy=false;
+    if(again){ again=false; kick(); }
+    return estado.ok;
+  }
+  function kick(){ clearTimeout(timer); timer=setTimeout(syncAll,1200); }
+  setInterval(syncAll,60000);
+  window.addEventListener("online",syncAll);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) syncAll(); });
+  return {
+    Store, syncAll, kick,
+    creds:()=>Object.assign({},creds),
+    setCreds(repo,token){ creds={repo:String(repo||"").trim().replace(/^https?:\/\/github\.com\//,"").replace(/\.git$/,"").replace(/\/$/,""),token:String(token||"").trim()}; lsSet(CK,creds); return syncAll(); },
+    estado:()=>estado, onEstado(f){ listeners.push(f); }, despuesDeSync(f){ despues.push(f); }
+  };
+})();
+
+
+(function(){
+const DEFAULT = {
+  tc:1530,
+  lista:[
+    {id:"corona",n:"Corona (prestación clínica)",p:350000,pieza:true},
+    {id:"g3",n:"Diseño y fabricación G3 (corona)",p:70000,pieza:true},
+    {id:"munon",n:"Muñón / reconstrucción con fibra",p:300000,pieza:true},
+    {id:"cor_impl",n:"Instalación de corona sobre implante",p:300000,pieza:true},
+    {id:"inc_prep",n:"Preparación y escaneo para incrustación",p:300000,pieza:true},
+    {id:"inc_cem",n:"Cementado de incrustación",p:300000,pieza:true},
+    {id:"comp_s",n:"Restauración de composite simple",p:300000,pieza:true},
+    {id:"comp_c",n:"Restauración de composite compleja",p:450000,pieza:true},
+    {id:"prov",n:"Provisorio y prueba",p:150000,pieza:true},
+    {id:"consulta",n:"Consulta y diagnóstico",p:150000,pieza:false},
+    {id:"control",n:"Control y ajuste",p:150000,pieza:false},
+    {id:"jornada",n:"Jornada completa (9 a 20 hs)",p:3320000,pieza:false},
+    {id:"otro",n:"Otro",p:0,pieza:false}
+  ]
+};
+/* agrega el ítem G3 a listas guardadas antes de este cambio */
+function ensureG3(c){
+  if(!c.lista.some(t=>t.id==="g3")){
+    const i=Math.max(0,c.lista.findIndex(t=>t.id==="corona")+1);
+    c.lista.splice(i,0,{id:"g3",n:"Diseño y fabricación G3 (corona)",p:c.g3||70000,pieza:true});
+  }
+  return c;
+}
+let cfg = JSON.parse(JSON.stringify(DEFAULT));
+let trabajos = [];
+let db=null, user=null, sample=null, downloads=null, base=null, col=null;
+const $ = id => document.getElementById(id);
+const money = n => "$" + Math.round(n||0).toLocaleString("es-AR");
+const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const fmtFecha = f => (f||"").split("-").reverse().join("/");
+function status(t,warn){ const s=$("status"); if(!t){s.hidden=true;return;} s.textContent=t; s.className="msg"+(warn?" warn":""); s.hidden=false; }
+
+/* modo sin conexión: copia local + cola de cambios pendientes */
+const LS = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+};
+let outbox = LS.get("rt_outbox",[]);
+let remote = LS.get("rt_cache",[]);
+const cachedCfg = LS.get("rt_cfg",null); if(cachedCfg) cfg=cachedCfg;
+ensureG3(cfg);
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
+const withTimeout = (p,ms) => Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),ms))]);
+function merge(){
+  const m=new Map(remote.map(t=>[t.id,Object.assign({},t)]));
+  outbox.forEach(o=>{
+    if(o.op==="set") m.set(o.id,Object.assign({id:o.id},o.data));
+    else if(o.op==="update" && m.has(o.id)) Object.assign(m.get(o.id),o.data);
+    else if(o.op==="delete") m.delete(o.id);
+  });
+  trabajos=[...m.values()];
+  if(!$("v-cuenta").hidden) renderCuenta();
+  syncBadge();
+}
+function syncBadge(){
+  const n=outbox.length, el=$("sync");
+  if(!n){ el.hidden=true; return; }
+  el.hidden=false;
+  el.textContent = navigator.onLine
+    ? `Sincronizando ${n} cambio${n>1?"s":""}…`
+    : `Sin conexión: ${n} cambio${n>1?"s":""} guardado${n>1?"s":""} en este dispositivo. Se suben solos cuando vuelva internet.`;
+}
+function queue(op){ outbox.push(op); LS.set("rt_outbox",outbox); merge(); flush(); }
+let flushing=false;
+async function flush(){
+  if(flushing||!col||!outbox.length){ syncBadge(); return; }
+  flushing=true;
+  while(outbox.length){
+    const o=outbox[0];
+    try{
+      const ref=col.doc(o.id);
+      if(o.op==="set") await withTimeout(ref.set(o.data),15000);
+      else if(o.op==="update") await withTimeout(ref.update(o.data),15000);
+      else if(o.op==="delete") await withTimeout(ref.delete(),15000);
+      outbox.shift(); LS.set("rt_outbox",outbox);
+    }catch(e){
+      if(e && e.code==="not_found" && o.op!=="set"){ outbox.shift(); LS.set("rt_outbox",outbox); continue; }
+      break;
+    }
+  }
+  flushing=false; merge();
+}
+window.addEventListener("online",()=>{ syncBadge(); flush(); });
+window.addEventListener("offline",syncBadge);
+setInterval(flush,30000);
+
+/* tabs */
+const views=["cargar","cuenta","precios","ajustes"];
+function show(v){ views.forEach(x=>{ $("v-"+x).hidden = x!==v; $("tab-"+x).setAttribute("aria-selected", x===v); }); if(v==="cuenta") renderCuenta(); if(v==="precios") renderPrecios(); }
+views.forEach(v=>$("tab-"+v).addEventListener("click",()=>show(v)));
+
+/* tratamientos del dictado: cada uno con piezas y caras */
+const UP=[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
+const LO=[48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
+const VALID=new Set(UP.concat(LO));
+const anterior = n => (n%10)<=3;
+const facesFor = n => anterior(n) ? ["M","I","D","V","L"] : ["M","O","D","V","L"];
+let items=[];
+const newItem = (tid) => ({tid: tid || "", sel:new Map()});
+const VACIO = {id:"",n:"",p:0,pieza:false};
+const tratById = id => cfg.lista.find(t=>t.id===id) || cfg.lista.find(t=>t.id==="otro") || cfg.lista[0];
+function normCaras(n,str){
+  const ok=facesFor(n); const s=new Set();
+  String(str||"").toUpperCase().replace(/P/g,"L").split("").forEach(ch=>{
+    let c=ch; if(c==="O"&&anterior(n)) c="I"; if(c==="I"&&!anterior(n)) c="O";
+    if(ok.includes(c)) s.add(c);
+  });
+  return ok.filter(c=>s.has(c)).join("");
+}
+let editId=null, editDoc=null;
+function itemCalc(it){
+  const base=it.tid ? tratById(it.tid) : VACIO;
+  const t = Object.assign({},base,{p:(it.precio!==undefined && it.precio!==null)?it.precio:base.p, n: it.nombre||base.n});
+  const piezas=[...it.sel.keys()].sort((a,b)=>a-b);
+  const cant=t.pieza?Math.max(piezas.length,1):1;
+  const detalle=piezas.map(n=>{ const c=facesFor(n).filter(x=>it.sel.get(n).has(x)).join(""); return c?`${n} ${c}`:String(n); });
+  return {t,piezas,detalle,cant,total:t.p*cant};
+}
+const cobradoDe = t => (typeof t.cobrado==="number") ? t.cobrado : (t.estado==="cobrado" ? (t.total||0) : 0);
+const saldoDe = t => Math.max((t.total||0)-cobradoDe(t),0);
+const estadoPor = (total,cob) => cob>=total && total>0 ? "cobrado" : (cob>0 ? "parcial" : "pendiente");
+function renderItems(){
+  const box=$("items"); box.innerHTML="";
+  items.forEach((it,idx)=>{
+    const c=itemCalc(it);
+    const card=document.createElement("div"); card.className="tx";
+    const head=document.createElement("div"); head.className="tx-head";
+    const hb=document.createElement("b"); hb.textContent="Tratamiento "+(idx+1); head.appendChild(hb);
+    if(items.length>1){ const rm=document.createElement("button"); rm.className="link"; rm.textContent="Quitar"; rm.onclick=()=>{ items.splice(idx,1); renderItems(); }; head.appendChild(rm); }
+    const sel=document.createElement("select"); sel.setAttribute("aria-label","Tratamiento");
+    const ph=document.createElement("option"); ph.value=""; ph.textContent="Elegí el tratamiento"; ph.disabled=true; sel.appendChild(ph);
+    cfg.lista.forEach(t=>{ const o=document.createElement("option"); o.value=t.id; o.textContent=t.n+" · "+money(t.p)+(t.pieza?" c/pieza":""); sel.appendChild(o); });
+    sel.value=it.tid; sel.onchange=()=>{ it.tid=sel.value; it.precio=null; it.nombre=null; renderItems(); };
+    let nameLab=null;
+    if(it.tid==="otro"){
+      nameLab=document.createElement("label"); nameLab.textContent="Nombre del trabajo";
+      const ni=document.createElement("input"); ni.value=it.nombre||""; ni.placeholder="Ej: Diseño y fabricación de corona";
+      ni.onchange=()=>{ it.nombre=ni.value.trim()||null; calc(); };
+      nameLab.appendChild(ni);
+    }
+    let priceLab=null;
+    if(editId){
+      priceLab=document.createElement("label"); priceLab.textContent=c.t.pieza?"Precio por pieza":"Precio";
+      const pi=document.createElement("input"); pi.type="number"; pi.inputMode="numeric"; pi.value=c.t.p;
+      pi.onchange=()=>{ it.precio=+pi.value||0; renderItems(); };
+      priceLab.appendChild(pi);
+    }
+    const odo=document.createElement("div");
+    const a1=document.createElement("div"); a1.className="arch"; a1.innerHTML="<span>Superior · derecha</span><span>izquierda</span>";
+    const a2=document.createElement("div"); a2.className="arch"; a2.innerHTML="<span>Inferior · derecha</span><span>izquierda</span>";
+    const grids=[UP,LO].map((arr,k)=>{ const g=document.createElement("div"); g.className="teeth"; if(k) g.style.marginTop="3px";
+      arr.forEach((n,i)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=n; if(i===7) b.className="mid";
+        b.setAttribute("aria-pressed",it.sel.has(n)); b.onclick=()=>{ it.sel.has(n)?it.sel.delete(n):it.sel.set(n,new Set()); renderItems(); }; g.appendChild(b); });
+      return g; });
+    odo.append(a1,grids[0],grids[1],a2);
+    const faces=document.createElement("div"); faces.className="faces";
+    c.piezas.forEach(n=>{ const r=document.createElement("div"); r.className="face-row";
+      const lab=document.createElement("span"); lab.className="n"; lab.textContent=n; r.appendChild(lab);
+      facesFor(n).forEach(f=>{ const b=document.createElement("button"); b.type="button"; b.textContent=f; b.title={M:"Mesial",O:"Oclusal",I:"Incisal",D:"Distal",V:"Vestibular",L:"Lingual / palatino"}[f];
+        b.setAttribute("aria-pressed",it.sel.get(n).has(f)); b.onclick=()=>{ const s=it.sel.get(n); s.has(f)?s.delete(f):s.add(f); renderItems(); }; r.appendChild(b); });
+      faces.appendChild(r); });
+    const sub=document.createElement("div"); sub.className="sub";
+    const sl=document.createElement("span"); sl.textContent=!it.tid?"":(c.t.pieza?`${c.cant} × ${money(c.t.p)}`:"Precio fijo");
+    const sr=document.createElement("span"); sr.textContent=money(c.total); sub.append(sl,sr);
+    card.append(head,sel); if(nameLab) card.append(nameLab); if(priceLab) card.append(priceLab); card.append(odo); if(c.piezas.length){ card.append(faces); }
+    card.append(sub); box.appendChild(card);
+  });
+  calc();
+}
+function calc(){
+  const cs=items.map(itemCalc); const tot=cs.reduce((s,c)=>s+c.total,0);
+  $("f-detalle").textContent = cs.length>1 ? `${cs.length} tratamientos` : (cs[0]&&items[0].tid? (cs[0].t.pieza?`${cs[0].cant} × ${money(cs[0].t.p)}`:money(cs[0].t.p)) : "—");
+  $("f-total").textContent=money(tot);
+  if(editId){ const cob=+$("f-cobrado").value||0; const sal=Math.max(tot-cob,0);
+    $("f-saldo").textContent = sal>0 ? `Saldo pendiente: ${money(sal)}` : (cob>0 ? "Trabajo pagado completo." : ""); }
+}
+$("f-cobrado").addEventListener("input",()=>{ if(+$("f-cobrado").value>0 && !$("f-fcobro").value) $("f-fcobro").value=today(); calc(); });
+$("btn-pago-total").addEventListener("click",()=>{ const tot=items.map(itemCalc).reduce((s,c)=>s+c.total,0); $("f-cobrado").value=tot; if(!$("f-fcobro").value) $("f-fcobro").value=today(); calc(); });
+$("btn-add-item").addEventListener("click",()=>{ items.push(newItem()); renderItems(); });
+
+/* interpretación local (respaldo sin conexión) */
+const FACE_WORDS=[["mesial","M"],["mesio","M"],["oclusal","O"],["ocluso","O"],["incisal","I"],["distal","D"],["vestibular","V"],["bucal","V"],["lingual","L"],["palatin","L"]];
+const KW="clase|corona|incrust|muñ|munon|compos|resina|provis|control|consulta|dise|g3|instal|cement|perno|implante|carilla|endo|extrac|blanq|restaur|reconst";
+function tratamientosEn(cl){
+  const low=cl.toLowerCase();
+  const propio=cfg.lista.filter(t=>t.id!=="otro").sort((a,b)=>b.n.length-a.n.length).find(t=>low.includes(t.n.toLowerCase()));
+  if(propio) return [propio.id];
+  const has=id=>cfg.lista.some(t=>t.id===id);
+  const out=[];
+  if(/g3|dise[ñn]|fabric/.test(low) && has("g3")){ out.push("g3"); if(/instal|cement/.test(low)) out.push(/implante/.test(low)&&has("cor_impl")?"cor_impl":"corona"); return out.filter(has); }
+  const map=[["sobre implante","cor_impl"],["implante","cor_impl"],["muñ","munon"],["munon","munon"],["perno","munon"],["fibra","munon"],["cementad","inc_cem"],["incrust","inc_prep"],["corona","corona"],["instal","corona"],["compleja","comp_c"],["clase","comp_s"],["composite","comp_s"],["resina","comp_s"],["restaur","comp_s"],["provisori","prov"],["consulta","consulta"],["control","control"],["ajuste","control"],["jornada","jornada"]];
+  const m=map.find(([k,id])=>low.includes(k)&&has(id));
+  return m?[m[1]]:[];
+}
+function piezasEn(cl){
+  const res=new Map();
+  let m; const reN=/\b([1-4][1-8])\b/g;
+  while((m=reN.exec(cl))){ const n=+m[1]; if(VALID.has(n)&&!res.has(n)) res.set(n,""); }
+  const reDesp=/\b([1-4][1-8])\s*([MODVLIP]{1,5})\b/g; while((m=reDesp.exec(cl))){ const n=+m[1]; if(res.has(n)) res.set(n,m[2]); }
+  const reAntes=/\b([MODVLIP]{1,5})\s+(?:en\s+)?(?:la\s+)?(?:pieza\s+)?([1-4][1-8])\b/g; while((m=reAntes.exec(cl))){ const n=+m[2]; if(res.has(n)&&!res.get(n)) res.set(n,m[1]); }
+  const low=cl.toLowerCase();
+  const fw=FACE_WORDS.filter(([w])=>new RegExp("\\b"+w).test(low)).map(([,c])=>c).join("");
+  if(fw) res.forEach((v,k)=>{ if(!v) res.set(k,fw); });
+  return [...res.entries()].map(([n,caras])=>({n,caras}));
+}
+function localParse(txt){
+  const reKW=new RegExp("(?:la|el|una|un|las|los)?\\s*(?:"+KW+")","i");
+  const primera=(txt.split(/[,.;:\n]/)[0]||"").trim();
+  const paciente = reKW.test(primera) ? (txt.split(new RegExp("\\s(?="+KW+")|\\s(?:en la|pieza)\\b","i"))[0]||"").trim() : primera;
+  const corte=new RegExp("[.;\\n]|,(?=\\s*(?:y\\s+)?(?:la|el|una|un|las|los)?\\s*(?:"+KW+"))|\\s+y\\s+(?=(?:la|el|una|un|las|los)?\\s*(?:"+KW+"))","i");
+  const resto = reKW.test(primera) ? txt : txt.slice(txt.indexOf(primera)+primera.length);
+  const items=[]; let ultimas=[];
+  resto.split(corte).forEach(cl=>{
+    if(!cl||!cl.trim()) return;
+    const tids=tratamientosEn(cl), pz=piezasEn(cl);
+    if(pz.length) ultimas=pz;
+    if(tids.length) tids.forEach(id=>items.push({tratamiento:id,piezas:pz.length?pz:ultimas}));
+    else if(pz.length && items.length && !items[items.length-1].piezas.length) items[items.length-1].piezas=pz;
+  });
+  return {paciente,items:items.length?items:[{tratamiento:"otro",piezas:ultimas}],nota:""};
+}
+
+async function interpretar(){
+  const txt=$("dictado").value.trim(); if(!txt){ status("Dictá o escribí el trabajo primero.",true); return; }
+  const btn=$("btn-interpretar"); btn.disabled=true; btn.textContent="Interpretando…";
+  let r=null;
+  if(sample && navigator.onLine){
+    try{
+      const ctl=new AbortController(); setTimeout(()=>ctl.abort(),15000);
+      r = await sample.json(
+`Sos el asistente de un odontólogo. Del dictado, extraé el paciente y TODOS los tratamientos realizados.
+Tratamientos posibles (usá el id exacto): ${cfg.lista.map(t=>t.id+" = "+t.n).join("; ")}.
+Reglas:
+- Cada tratamiento distinto es un ítem aparte. Si dice que diseñó y fabricó una pieza (G3, laboratorio, diseño) y también la instaló o cementó, devolvé DOS ítems con las mismas piezas: el de laboratorio G3 y el de la instalación/corona.
+- Piezas en numeración FDI (11-18, 21-28, 31-38, 41-48). Convertí números dichos en palabras ("treinta y seis" = 36).
+- Caras por pieza, solo si se mencionan, con letras: M mesial, O oclusal, I incisal, D distal, V vestibular/bucal, L lingual o palatino. "Mesio oclusal" = "MO", "MOD" = "MOD".
+- Si un tratamiento no encaja en la lista, usá "otro" y poné en "descripcion" el nombre corto del trabajo, como lo diría el odontólogo (máximo 6 palabras, sin el número de pieza). En los demás ítems dejá "descripcion" vacío.
+- "nota": SOLO si el dictado incluye una observación clínica explícita (por ejemplo "quedó alta la oclusión"), copiada en pocas palabras. Si no hay, dejá "". NUNCA expliques cómo interpretaste el dictado ni qué asignaste.
+Respondé SOLO JSON: {"paciente":string,"items":[{"tratamiento":string,"descripcion":string,"piezas":[{"n":number,"caras":string}]}],"nota":string}
+Dictado: """${txt}"""`, {modelTier:"quick", signal:ctl.signal});
+    }catch(e){ r=null; }
+  }
+  const offline = !r || typeof r!=="object" || !Array.isArray(r.items);
+  if(offline) r=localParse(txt);
+  $("f-paciente").value=r.paciente||"";
+  $("f-nota").value=r.nota||"";
+  items=(r.items||[]).map(x=>{
+    const it=newItem(cfg.lista.some(t=>t.id===x.tratamiento)?x.tratamiento:"otro");
+    if(it.tid==="otro" && x.descripcion) it.nombre=String(x.descripcion).trim().slice(0,60);
+    (x.piezas||[]).forEach(p=>{ const n=+(p&&p.n!==undefined?p.n:p); if(VALID.has(n)) it.sel.set(n,new Set(normCaras(n,p&&p.caras).split(""))); });
+    return it;
+  });
+  if(!items.length) items=[newItem()];
+  renderItems();
+  status(offline ? "Revisá bien tratamientos, piezas y caras antes de guardar." : "Revisá los datos y tocá Guardar.", offline);
+  btn.disabled=false; btn.textContent="Interpretar dictado";
+}
+$("btn-interpretar").addEventListener("click",interpretar);
+
+function setEditMode(on){
+  $("edit-banner").hidden=!on; $("cobro").hidden=!on;
+  ["h-dictado","dictado","btn-interpretar","btn-add-item"].forEach(id=>{ const el=$(id); (el.closest(".actions")||el).hidden=on; });
+  document.querySelector("#v-cargar .hint").hidden=on;
+  $("btn-guardar").textContent=on?"Guardar cambios":"Guardar trabajo";
+  $("btn-limpiar").textContent=on?"Cancelar":"Limpiar";
+  const bb=$("btn-borrar"); bb.hidden=!on; bb.dataset.c=""; bb.textContent="Borrar este trabajo";
+}
+$("btn-borrar").addEventListener("click",()=>{
+  const bb=$("btn-borrar"); if(!editId) return;
+  if(!bb.dataset.c){ bb.dataset.c="1"; bb.textContent="Tocá otra vez para borrarlo"; return; }
+  queue({op:"delete",id:editId}); status("Trabajo borrado."); limpiar(); show("cuenta");
+});
+function limpiar(){ editId=null; editDoc=null; setEditMode(false); $("dictado").value=""; $("f-paciente").value=""; $("f-nota").value=""; $("f-fecha").value=today(); $("f-cobrado").value=""; $("f-fcobro").value=""; items=[newItem()]; renderItems(); }
+$("btn-limpiar").addEventListener("click",()=>{ const volver=!!editId; limpiar(); status(""); if(volver) show("cuenta"); });
+
+function abrirEdicion(t){
+  editId=t.id; editDoc=t;
+  $("f-fecha").value=t.fecha||today(); $("f-clinica").value=t.clinica||""; $("f-paciente").value=t.paciente||""; $("f-nota").value=t.nota||"";
+  $("f-cobrado").value=cobradoDe(t)||""; $("f-fcobro").value=t.fechaCobro||"";
+  let tid=t.tid && cfg.lista.some(x=>x.id===t.tid) ? t.tid : ((cfg.lista.find(x=>x.n===t.tratamiento)||{}).id || "otro");
+  const it=newItem(tid);
+  it.precio = typeof t.precioUnit==="number" ? t.precioUnit : null;
+  if(tid==="otro" || !cfg.lista.some(x=>x.n===t.tratamiento)) it.nombre=t.tratamiento;
+  const det=(t.detalle&&t.detalle.length)?t.detalle:(t.piezas||[]).map(String);
+  det.forEach(d=>{ const [n,c]=String(d).split(" "); const num=+n; if(VALID.has(num)) it.sel.set(num,new Set(normCaras(num,c).split("").filter(Boolean))); });
+  items=[it];
+  setEditMode(true); show("cargar"); renderItems(); window.scrollTo(0,0);
+  status("");
+}
+
+function guardar(){
+  const pac=$("f-paciente").value.trim();
+  if(!pac){ status("Falta el nombre del paciente.",true); return; }
+  const sinTrat=items.findIndex(it=>!it.tid);
+  if(sinTrat>=0){ status(items.length>1?`Elegí el tratamiento ${sinTrat+1}.`:"Elegí el tratamiento.",true); return; }
+  const cs=items.map(itemCalc);
+  const sinPieza=cs.findIndex(c=>c.t.pieza&&!c.piezas.length);
+  if(sinPieza>=0){ status(`Marcá al menos una pieza en el tratamiento ${sinPieza+1}.`,true); return; }
+  if(editId){
+    const c=cs[0], esG3=items[0].tid==="g3", cob=Math.min(+$("f-cobrado").value||0, c.total);
+    queue({op:"update",id:editId,data:{fecha:$("f-fecha").value||today(),clinica:$("f-clinica").value.trim()||"Pergamino",paciente:pac,
+      tid:items[0].tid,tratamiento:c.t.n,piezas:c.piezas,detalle:c.detalle,precioUnit:c.t.p,cantidad:c.cant,
+      prestacion:esG3?0:c.total,g3:esG3?c.total:0,total:c.total,nota:$("f-nota").value.trim(),
+      cobrado:cob,fechaCobro:cob>0?($("f-fcobro").value||today()):"",estado:estadoPor(c.total,cob)}});
+    status(`Cambios guardados: ${pac}, ${c.t.n}.`);
+    limpiar(); show("cuenta"); return;
+  }
+  const grupo=newId(), fecha=$("f-fecha").value||today(), clinica=$("f-clinica").value.trim()||"Pergamino", nota=$("f-nota").value.trim(), dictado=$("dictado").value.trim();
+  cs.forEach((c,i)=>{
+    const esG3=items[i].tid==="g3";
+    queue({op:"set",id:newId(),data:{fecha,clinica,paciente:pac,grupo,tid:items[i].tid,tratamiento:c.t.n,piezas:c.piezas,detalle:c.detalle,
+      precioUnit:c.t.p,cantidad:c.cant,prestacion:esG3?0:c.total,g3:esG3?c.total:0,total:c.total,nota,dictado,labPend:esG3,estado:"pendiente",cobrado:0,fechaCobro:"",creado:Date.now()+i}});
+  });
+  const tot=cs.reduce((s,c)=>s+c.total,0);
+  status(`Guardado: ${pac}, ${cs.length} tratamiento${cs.length>1?"s":""}, ${money(tot)}.`);
+  limpiar();
+}
+$("btn-guardar").addEventListener("click",guardar);
+
+/* cuenta agrupada por paciente */
+const keyPac = p => (p||"Sin nombre").trim().toLowerCase();
+function filtrados(){
+  const mes=$("c-mes").value, cl=$("c-clinica").value;
+  return trabajos.filter(t=>(!mes||(t.fecha||"").startsWith(mes))&&(!cl||t.clinica===cl));
+}
+function porPaciente(L){
+  const g=new Map();
+  L.forEach(t=>{ const k=keyPac(t.paciente); if(!g.has(k)) g.set(k,{nombre:(t.paciente||"Sin nombre").trim(),items:[]}); g.get(k).items.push(t); });
+  const arr=[...g.values()];
+  arr.forEach(p=>{ p.items.sort((a,b)=>(a.fecha+a.creado)<(b.fecha+b.creado)?-1:1); p.total=p.items.reduce((s,t)=>s+(t.total||0),0); p.cob=p.items.reduce((s,t)=>s+cobradoDe(t),0); p.pend=p.items.reduce((s,t)=>s+saldoDe(t),0); });
+  return arr.sort((a,b)=>a.nombre.localeCompare(b.nombre,"es"));
+}
+const piezasTxt = t => (t.detalle&&t.detalle.length?t.detalle:(t.piezas||[]).map(String)).join(", ");
+const abiertos=new Set();
+const el = (tag,cls,txt) => { const e=document.createElement(tag); if(cls) e.className=cls; if(txt!==undefined) e.textContent=txt; return e; };
+function renderCuenta(){
+  const cls=[...new Set(trabajos.map(t=>t.clinica))].sort(); const cs=$("c-clinica"), cur=cs.value;
+  cs.innerHTML='<option value="">Todas</option>'; cls.forEach(c=>{ const o=document.createElement("option"); o.textContent=c; cs.appendChild(o); }); cs.value=cls.includes(cur)?cur:"";
+  const L=filtrados(), box=$("lista"); box.innerHTML="";
+  let pr=0,g=0,pend=0;
+  L.forEach(t=>{ pr+=t.prestacion||0; g+=t.g3||0; pend+=saldoDe(t); });
+  $("s-prest").textContent=money(pr); $("s-g3").textContent=money(g); $("s-pend").textContent=money(pend);
+  const q=$("c-buscar").value.trim().toLowerCase(), soloSaldo=$("c-saldo").checked;
+  const grupos=porPaciente(L).filter(p=>(!q||p.nombre.toLowerCase().includes(q))&&(!soloSaldo||p.pend>0));
+  if(!L.length){ box.appendChild(el("p","hint","No hay trabajos cargados en este mes. Cargalos desde la pestaña Cargar.")); return; }
+  if(!grupos.length){ box.appendChild(el("p","hint","Ningún paciente coincide con el filtro.")); return; }
+  const wrap=el("div","tw"), table=el("table","ct");
+  const thead=el("thead"); const hr=el("tr");
+  [["Paciente",""],["Total","r"],["Debe","r"],["",""]].forEach(([t,c])=>hr.appendChild(el("th",c,t)));
+  thead.appendChild(hr); table.appendChild(thead);
+  grupos.forEach(p=>{
+    const k=keyPac(p.nombre), open=abiertos.has(k);
+    const tb=el("tbody"+"");
+    const pr=el("tr","pr"); pr.tabIndex=0; pr.setAttribute("aria-expanded",open);
+    const n=el("td"); n.appendChild(el("span","pn",p.nombre)); n.appendChild(el("span","pc",` ${p.items.length} trab.`));
+    const debe=el("td","r mono"+(p.pend>0?" debe":" ok"), p.pend>0?money(p.pend):"pagado");
+    pr.append(n, el("td","r mono",money(p.total)), debe, el("td","chev",open?"▾":"▸"));
+    const toggle=()=>{ open?abiertos.delete(k):abiertos.add(k); renderCuenta(); };
+    pr.onclick=toggle; pr.onkeydown=e=>{ if(e.key==="Enter") toggle(); };
+    tb.appendChild(pr);
+    if(open){
+      p.items.forEach(t=>{
+        const est=estadoPor(t.total||0,cobradoDe(t));
+        const r=el("tr","it"); r.tabIndex=0; r.title="Tocá para editar";
+        const a=el("td"); const pz=piezasTxt(t);
+        a.appendChild(el("div","itt",t.tratamiento));
+        a.appendChild(el("div","its",`${fmtFecha(t.fecha).slice(0,5)}${pz?" · "+pz:""}`));
+        const st=el("td","r"); const chip=el("button","chip"+(est==="cobrado"?" ok":""), est==="cobrado"?"pagado":(est==="parcial"?`pagó ${money(cobradoDe(t))}`:"pendiente"));
+        chip.title=est==="cobrado"?"Tocá para marcar pendiente":"Tocá para marcar pagado";
+        chip.onclick=e=>{ e.stopPropagation(); queue({op:"update",id:t.id,data: est==="cobrado" ? {cobrado:0,fechaCobro:"",estado:"pendiente"} : {cobrado:t.total||0,fechaCobro:today(),estado:"cobrado"}}); };
+        st.appendChild(chip);
+        r.append(a, el("td","r mono",money(t.total)), st, el("td","chev","›"));
+        r.onclick=()=>abrirEdicion(t); r.onkeydown=e=>{ if(e.key==="Enter") abrirEdicion(t); };
+        tb.appendChild(r);
+      });
+      if(p.pend>0){
+        const fr=el("tr","foot"); const td=el("td"); td.colSpan=4;
+        const all=el("button","link",`Pagó todo (${money(p.pend)})`);
+        all.onclick=()=>{ if(!all.dataset.c){ all.dataset.c="1"; all.textContent=`Confirmar pago de ${money(p.pend)}`; return; }
+          const hoy=today(); p.items.filter(t=>saldoDe(t)>0).forEach(t=>queue({op:"update",id:t.id,data:{cobrado:t.total||0,fechaCobro:hoy,estado:"cobrado"}}));
+          status(`Registrado: ${p.nombre} pagó ${money(p.pend)}.`); };
+        td.appendChild(all); fr.appendChild(td); tb.appendChild(fr);
+      }
+    }
+    table.appendChild(tb);
+  });
+  wrap.appendChild(table); box.appendChild(wrap);
+}
+["c-mes","c-clinica","c-saldo"].forEach(id=>$(id).addEventListener("change",renderCuenta));
+$("c-buscar").addEventListener("input",renderCuenta);
+
+function resumenTexto(){
+  const grupos=porPaciente(filtrados()); const mes=$("c-mes").value;
+  let tot=0;
+  const bloques=grupos.map(p=>{ tot+=p.total;
+    const lines=p.items.map(t=>{ const pz=piezasTxt(t); return `  ${fmtFecha(t.fecha)} – ${t.tratamiento}${pz?" (pieza "+pz+")":""}: ${money(t.total)}`; });
+    const est = p.pend<=0 ? "Pagado" : (p.cob>0 ? `Pagó ${money(p.cob)} · Saldo ${money(p.pend)}` : `Saldo ${money(p.pend)}`);
+    return `${p.nombre.toUpperCase()} – ${money(p.total)}\n${lines.join("\n")}\n  ${est}`; });
+  return `Dr. Gonzalo Rodríguez Orsero – Trabajos ${mes.split("-").reverse().join("/")}${$("c-clinica").value?" – "+$("c-clinica").value:""}\n\n${bloques.join("\n\n")}\n\nTOTAL: ${money(tot)} (USD ${Math.round(tot/cfg.tc).toLocaleString("es-AR")})`;
+}
+$("btn-copiar").addEventListener("click",()=>{
+  const txt=resumenTexto();
+  (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>status("Resumen copiado. Pegalo en WhatsApp o en un mail."))
+  .catch(()=>{ $("dictado").value=txt; show("cargar"); $("dictado").select(); status("Copiá el resumen desde el cuadro de dictado.",true); });
+});
+$("btn-csv").addEventListener("click",async()=>{
+  if(!downloads){ status("Descargar no está disponible en esta vista.",true); return; }
+  const rows=[["Paciente","Fecha","Clínica","Tratamiento","Piezas y caras","Cantidad","Precio unitario","Total","Cobrado","Saldo","Fecha de cobro","Nota"]];
+  porPaciente(filtrados()).forEach(p=>p.items.forEach(t=>rows.push([p.nombre,t.fecha,t.clinica,t.tratamiento,piezasTxt(t),t.cantidad,t.precioUnit,t.total,cobradoDe(t),saldoDe(t),t.fechaCobro||"",t.nota])));
+  const csv=rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\n");
+  try{ await downloads.save({filename:`trabajos-${$("c-mes").value||"todos"}.csv`,data:"﻿"+csv}); }catch(e){}
+});
+$("btn-liquidar").addEventListener("click",e=>{
+  const b=e.currentTarget; const L=filtrados().filter(t=>saldoDe(t)>0);
+  if(!L.length){ status("No hay trabajos pendientes en este mes."); return; }
+  if(!b.dataset.c){ b.dataset.c="1"; b.textContent=`Confirmar: ${L.length} trabajos como pagados`; return; }
+  b.dataset.c=""; b.textContent="Marcar mes como cobrado";
+  const hoy=today(); L.forEach(t=>queue({op:"update",id:t.id,data:{cobrado:t.total||0,fechaCobro:hoy,estado:"cobrado"}}));
+});
+
+/* precios */
+function renderPrecios(){
+  $("p-tc").value=cfg.tc;
+  $("p-tabla").innerHTML="";
+  cfg.lista.forEach(t=>{ const tr=document.createElement("tr");
+    const a=document.createElement("td"); const nm=document.createElement("input"); nm.className="nm"; nm.id="pn-"+t.id; nm.value=t.n; a.appendChild(nm);
+    const b=document.createElement("td"); b.style.width="30%"; const inp=document.createElement("input"); inp.type="number"; inp.id="pp-"+t.id; inp.value=t.p; b.appendChild(inp);
+    const c=document.createElement("td"); c.className="c"; const ck=document.createElement("input"); ck.type="checkbox"; ck.id="pk-"+t.id; ck.checked=!!t.pieza; ck.setAttribute("aria-label","Se cobra por pieza"); c.appendChild(ck);
+    const d=document.createElement("td"); d.className="c";
+    if(t.id!=="otro"){ const del=document.createElement("button"); del.className="link"; del.textContent="Borrar";
+      del.onclick=()=>{ if(del.dataset.c){ leerTabla(); cfg.lista=cfg.lista.filter(x=>x.id!==t.id); guardarPrecios(`Borrado: ${t.n}.`); }
+        else{ del.dataset.c="1"; del.textContent="¿Seguro?"; } };
+      d.appendChild(del); }
+    tr.append(a,b,c,d); $("p-tabla").appendChild(tr); });
+}
+function leerTabla(){
+  cfg.tc=+$("p-tc").value||cfg.tc;
+  cfg.lista.forEach(t=>{ const n=$("pn-"+t.id), v=$("pp-"+t.id), k=$("pk-"+t.id);
+    if(n&&n.value.trim()) t.n=n.value.trim(); if(v) t.p=+v.value||0; if(k) t.pieza=k.checked; });
+}
+async function guardarPrecios(msg){
+  LS.set("rt_cfg",cfg); renderItems(); renderPrecios();
+  if(!base){ status((msg?msg+" ":"")+"Guardado en este dispositivo; se sube cuando tengas conexión y vuelvas a guardar.",true); return; }
+  try{ await withTimeout(base.set({config:cfg}),15000); status(msg||"Precios guardados."); }
+  catch(e){ status("Guardado en este dispositivo; no se pudo subir. Probá de nuevo con conexión.",true); }
+}
+$("btn-precios").addEventListener("click",()=>{ leerTabla(); guardarPrecios(); });
+$("btn-agregar").addEventListener("click",()=>{
+  const n=$("n-nombre").value.trim(), p=+$("n-precio").value;
+  if(!n){ status("Escribí el nombre del trabajo.",true); return; }
+  if(!(p>0)){ status("Escribí el precio.",true); return; }
+  if(cfg.lista.some(t=>t.n.toLowerCase()===n.toLowerCase())){ status("Ese trabajo ya está en la lista.",true); return; }
+  leerTabla();
+  const nuevo={id:"t_"+newId().replace(/-/g,"").slice(0,8),n:n,p:p,pieza:$("n-pieza").checked};
+  const iOtro=cfg.lista.findIndex(t=>t.id==="otro");
+  if(iOtro>=0) cfg.lista.splice(iOtro,0,nuevo); else cfg.lista.push(nuevo);
+  $("n-nombre").value=""; $("n-precio").value="";
+  guardarPrecios(`Agregado: ${n}, ${money(p)}.`);
+});
+
+/* arranque */
+$("f-fecha").value=today(); $("c-mes").value=today().slice(0,7);
+items=[newItem()]; renderItems(); merge();
+
+const R=G3Sync.Store("registro.json","rt_store"), L=G3Sync.Store("lab.json","g3lab_store");
+downloads={save:async({filename,data})=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([data],{type:"text/plain;charset=utf-8"})); a.download=filename; a.click(); }};
+let cfgSeen=-1;
+function snap(){
+  remote=R.all().map(x=>Object.assign({},x)); LS.set("rt_cache",remote); merge();
+  if(R.cfgM()!==cfgSeen){ cfgSeen=R.cfgM(); const c=R.cfg();
+    if(c){ cfg=ensureG3(JSON.parse(JSON.stringify(c))); LS.set("rt_cfg",cfg);
+      items.forEach(it=>{ if(it.tid && !cfg.lista.some(t=>t.id===it.tid)) it.tid=""; }); renderItems(); if(!$("v-precios").hidden) renderPrecios(); } }
+}
+base={set:async o=>{ R.setCfg(o.config); }};
+col={doc:id=>({set:async d=>R.put(id,d), update:async d=>R.patch(id,d), delete:async()=>R.del(id)})};
+
+/* puente con G3 Lab */
+let vinculando=false;
+function vincular(){
+  if(vinculando) return false; vinculando=true; let ch=false;
+  try{
+    R.all().forEach(t=>{ if(t.labPend && !t.lab){ const id="reg-"+t.id, pz=piezasTxt(t);
+      if(!L.get(id)) L.put(id,{cliente:t.clinica||"Sin asignar",paciente:t.paciente||"",trabajo:(t.tratamiento||"Trabajo G3")+(pz?" - pieza "+pz:""),ingreso:t.fecha||today(),entrega:"",estado:"Pendiente",entregado:"",notas:t.nota||"",origen:"Registro de Trabajos",carpeta:"",precio:t.total||0,reg:t.id});
+      R.patch(t.id,{lab:id}); ch=true; } });
+    L.all().forEach(j=>{ if(j.estado==="Entregado" && +j.precio>0 && !j.reg){ const id="lab-"+j.id, p=+j.precio;
+      if(!R.get(id)) R.put(id,{fecha:j.entregado||today(),clinica:j.cliente||"Laboratorio",paciente:j.paciente||"",grupo:id,tid:"g3",tratamiento:j.trabajo||"Trabajo de laboratorio G3",piezas:[],detalle:[],precioUnit:p,cantidad:1,prestacion:0,g3:p,total:p,nota:j.notas||"",dictado:"",estado:"pendiente",cobrado:0,fechaCobro:"",creado:Date.now(),lab:j.id});
+      L.patch(j.id,{reg:id}); ch=true; } });
+  }catch(e){}
+  vinculando=false; return ch;
+}
+R.onChange(()=>{ snap(); vincular(); }); L.onChange(vincular);
+G3Sync.despuesDeSync(vincular);
+
+/* ajustes */
+const c0=G3Sync.creds(); $("a-repo").value=c0.repo; $("a-token").value=c0.token;
+const pinta=e=>{ $("a-estado").textContent=e.msg; };
+G3Sync.onEstado(pinta); pinta(G3Sync.estado());
+$("btn-sync").addEventListener("click",async()=>{ $("a-estado").textContent="Sincronizando…"; const ok=await G3Sync.setCreds($("a-repo").value,$("a-token").value); status(ok?"Sincronización activada.":G3Sync.estado().msg,!ok); });
+$("btn-export").addEventListener("click",()=>downloads.save({filename:"registro-respaldo-"+today()+".json",data:JSON.stringify({registro:R.exportar(),lab:L.exportar()},null,1)}));
+$("btn-import").addEventListener("click",()=>$("f-import").click());
+$("f-import").addEventListener("change",async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{ const o=JSON.parse(await f.text());
+    if(o.registro) R.importar(o.registro);
+    if(o.lab) L.importar(o.lab);
+    status("Respaldo importado."); show("cuenta");
+  }catch(err){ status("Ese archivo no es un respaldo válido.",true); }
+  e.target.value="";
+});
+
+snap(); vincular(); flush(); G3Sync.syncAll();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+})();
+</script>
+
+
+</body>
+</html>

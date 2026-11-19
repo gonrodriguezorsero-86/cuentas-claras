@@ -154,6 +154,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
 <div id="v-app" hidden>
   <header class="top">
     <div class="logo">rn<i>.</i><small id="h-sede">Consultorio</small></div>
+    <select id="h-sede-sel" hidden style="width:auto;padding:6px 8px;font-weight:600"></select>
     <nav class="tabs" role="tablist">
       <button role="tab" data-v="agenda" aria-selected="true">Agenda</button>
       <button role="tab" data-v="pacientes" aria-selected="false">Pacientes</button>
@@ -210,9 +211,9 @@ dialog form{display:flex;flex-direction:column;gap:12px}
     <section id="v-ajustes" hidden>
       <div class="cards">
         <form class="card" id="cfg-cons" style="display:flex;flex-direction:column;gap:10px">
-          <h3>Consultorio</h3>
-          <div class="row"><label>Nombre<input name="nombre"></label><label>Sede<input name="sede"></label></div>
-          <label>Dirección (va en los mensajes con {direccion})<input name="direccion"></label>
+          <h3 id="cfg-ttl">Sede</h3>
+          <div class="row"><label>Nombre del consultorio<input name="nombre"></label><label>Nombre de la sede<input name="sede"></label></div>
+          <label>Dirección de la sede (va en los mensajes con {direccion})<input name="direccion"></label>
           <div class="row3" style="grid-template-columns:1fr 1fr 84px"><label>Desde<input name="hora_desde" type="time" step="900"></label><label>Hasta<input name="hora_hasta" type="time" step="900"></label><label>Turno (min)<input name="duracion" type="number" min="10" step="5"></label></div>
           <div><span class="hint">Días de atención</span><div id="cfg-dias" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px"></div></div>
           <button class="btn">Guardar</button>
@@ -396,28 +397,46 @@ async function entrar(){
 
 /* ---------- datos ---------- */
 async function q(p){ const { data, error } = await p; if (error) throw error; return data; }
+let sedeId = LS.get('rn_sede', '');
 async function cargarBase(){
-  const [prof, cfg, personal] = await Promise.all([
+  const [sedes, prof, cfg, personal] = await Promise.all([
+    q(sb.from('sedes').select('*').order('nombre')),
     q(sb.from('profesionales').select('*').order('creado')),
     q(sb.from('config').select('*')),
     q(sb.from('personal').select('*').order('creado'))
   ]);
-  S.prof = prof; S.personal = personal;
-  S.cfg = Object.assign({nombre:'RN Odontología',sede:'Avellaneda',direccion:'',hora_desde:'13:00',hora_hasta:'19:30',duracion:30,dias:[1,2,3,4,5]}, (cfg.find(c=>c.clave==='consultorio')||{}).valor);
+  S.sedes = sedes.filter(x=>x.activo); S.profAll = prof; S.personal = personal;
+  S.cons = Object.assign({nombre:'RN Odontología'}, (cfg.find(c=>c.clave==='consultorio')||{}).valor);
   S.tpl = Object.assign({recordatorio:'',cumpleanos:'',control:''}, (cfg.find(c=>c.clave==='plantillas')||{}).valor);
-  $('#h-sede').textContent = S.cfg.sede || 'Consultorio';
-  if (!S.prof.length && perfil.rol==='admin'){
-    try{ const p = await q(sb.from('profesionales').insert({ nombre: perfil.nombre || 'Profesional', titulo:'Dr.' }).select().single()); S.prof=[p]; }catch(e){}
+  if (!S.sedes.length){ toast('Tu usuario no tiene ninguna sede asignada.', true); return; }
+  if (!S.sedes.some(x=>x.id===sedeId)) sedeId = (S.sedes.find(x=>(perfil.sedes||[]).includes(x.id))||S.sedes[0]).id;
+  const sel=$('#h-sede-sel');
+  sel.innerHTML = S.sedes.map(x=>`<option value="${esc(x.id)}">${esc(x.nombre)}</option>`).join('');
+  sel.hidden = S.sedes.length<2; $('#h-sede').hidden = S.sedes.length>1;
+  if (perfil.rol==='admin' && !S.profAll.length){
+    try{ const pr = await q(sb.from('profesionales').insert({ nombre: perfil.nombre || 'Profesional', titulo:'Dr.', sede_id: sedeId }).select().single()); S.profAll=[pr];
+      if (!perfil.profesional_id){ await q(sb.from('personal').update({profesional_id: pr.id}).eq('user_id', me.id)); perfil.profesional_id=pr.id; } }catch(e){}
   }
+  $$('nav.tabs button[data-v=lab]').forEach(b=>b.hidden = perfil.rol!=='admin');
+  aplicarSede();
+}
+function aplicarSede(){
+  LS.set('rn_sede', sedeId); $('#h-sede-sel').value = sedeId;
+  const se = S.sedes.find(x=>x.id===sedeId) || {};
+  S.cfg = { nombre:S.cons.nombre, sede:se.nombre, direccion:se.direccion||'', hora_desde:se.hora_desde||'13:00', hora_hasta:se.hora_hasta||'19:30', duracion:+se.duracion||30, dias:se.dias||[1,2,3,4,5] };
+  $('#h-sede').textContent = se.nombre || 'Consultorio';
+  S.prof = S.profAll.filter(p=>p.sede_id===sedeId);
+  S.pacientes = new Map(); cumplesCache = null;
   pintarProfSelects();
 }
+$('#h-sede-sel').onchange = e => { sedeId = e.target.value; aplicarSede(); irA(vista); };
 async function cargarPacientes(){
   const all=[]; let from=0;
-  while(true){ const page = await q(sb.from('pacientes').select('*').order('apellido').range(from, from+999)); all.push(...page); if (page.length<1000) break; from+=1000; }
+  while(true){ const page = await q(sb.from('pacientes').select('*').eq('sede_id', sedeId).order('apellido').range(from, from+999)); all.push(...page); if (page.length<1000) break; from+=1000; }
   S.pacientes = new Map(all.map(p=>[p.id,p])); return all;
 }
 const nombrePac = p => p ? [p.nombre, p.apellido].filter(Boolean).join(' ') : 'Sin paciente';
-const profById = id => S.prof.find(p=>p.id===id);
+const profById = id => (S.profAll||S.prof).find(p=>p.id===id);
 const nombreProf = p => p ? [p.titulo, p.nombre].filter(Boolean).join(' ') : '';
 
 /* ---------- navegación ---------- */
@@ -468,10 +487,12 @@ let aModo = LS.get('rn_modo', innerWidth<760 ? 'dia' : 'semana');
 let aProf = LS.get('rn_prof', '');
 function pintarProfSelects(){
   const opts = S.prof.filter(p=>p.activo).map(p=>`<option value="${p.id}">${esc(nombreProf(p))}</option>`).join('');
-  $('#a-prof').innerHTML = `<option value="">Todos los profesionales</option>`+opts;
-  if (!S.prof.some(p=>p.id===aProf)) aProf='';
+  const soloYo = perfil && perfil.rol==='profesional';
+  $('#a-prof').innerHTML = soloYo ? S.prof.filter(p=>p.id===perfil.profesional_id).map(p=>`<option value="${p.id}">${esc(nombreProf(p))}</option>`).join('') : `<option value="">Todos los profesionales</option>`+opts;
+  if (soloYo) aProf = perfil.profesional_id||'';
+  else if (!S.prof.some(p=>p.id===aProf)) aProf='';
   $('#a-prof').value = aProf;
-  $('#t-prof').innerHTML = opts;
+  $('#t-prof').innerHTML = soloYo ? $('#a-prof').innerHTML : opts;
 }
 $('#a-prof').onchange = e => { aProf=e.target.value; LS.set('rn_prof',aProf); pintarAgenda(); };
 $$('.agbar [data-m]').forEach(b=>b.onclick=()=>{ aModo=b.dataset.m; LS.set('rn_modo',aModo); pintarAgenda(); });
@@ -489,7 +510,7 @@ async function pintarAgenda(){
   const [desde,hasta]=rango();
   const hoy=startDay(new Date()), manana=addDays(hoy,1), pasado=addDays(hoy,2);
   const qDesde = desde<hoy?desde:hoy, qHasta = hasta>pasado?hasta:pasado;
-  const tur = await q(sb.from('turnos').select('*').gte('inicio', qDesde.toISOString()).lt('inicio', qHasta.toISOString()).order('inicio'));
+  const tur = await q(sb.from('turnos').select('*').eq('sede_id', sedeId).gte('inicio', qDesde.toISOString()).lt('inicio', qHasta.toISOString()).order('inicio'));
   const faltan = [...new Set(tur.map(t=>t.paciente_id).filter(id=>id && !S.pacientes.has(id)))];
   if (faltan.length){ const ps = await q(sb.from('pacientes').select('*').in('id', faltan)); ps.forEach(p=>S.pacientes.set(p.id,p)); }
   S.turnos = tur;
@@ -627,7 +648,7 @@ $('#f-turno').onsubmit = async e=>{
   e.preventDefault();
   const [y,mo,d]=$('#t-fecha').value.split('-').map(Number), [hh,mi]=$('#t-hora').value.split(':').map(Number);
   const ini=new Date(y,mo-1,d,hh,mi), fin=new Date(ini.getTime()+(+$('#t-dur').value||30)*60000);
-  const row={ paciente_id:tPac?tPac.id:null, profesional_id:$('#t-prof').value||null, inicio:ini.toISOString(), fin:fin.toISOString(), motivo:$('#t-motivo').value.trim(), estado:$('#t-estado').value, notas:$('#t-notas').value.trim() };
+  const row={ sede_id:sedeId, paciente_id:tPac?tPac.id:null, profesional_id:$('#t-prof').value||null, inicio:ini.toISOString(), fin:fin.toISOString(), motivo:$('#t-motivo').value.trim(), estado:$('#t-estado').value, notas:$('#t-notas').value.trim() };
   if (!row.paciente_id && !row.motivo){ toast('Elegí un paciente o escribí un motivo (por ejemplo "Bloqueado").', true); return; }
   $('#t-save').disabled=true;
   try{
@@ -687,7 +708,7 @@ $('#f-pac').onsubmit = async e=>{
   PCAMPOS.forEach(k=>row[k]=f[k].value.trim()); row.fecha_nac=row.fecha_nac||null; row.acepta_whatsapp=f.acepta_whatsapp.checked;
   if (row.dni && [...S.pacientes.values()].some(x=>x.dni===row.dni && (!paEdit||x.id!==paEdit.id))){ toast('Ya hay un paciente con ese DNI.', true); return; }
   try{
-    const p = paEdit ? await q(sb.from('pacientes').update(row).eq('id', paEdit.id).select().single()) : await q(sb.from('pacientes').insert(row).select().single());
+    const p = paEdit ? await q(sb.from('pacientes').update(row).eq('id', paEdit.id).select().single()) : await q(sb.from('pacientes').insert({...row, sede_id:sedeId}).select().single());
     S.pacientes.set(p.id, p); cumplesCache=null;
     $('#d-pac').close(); toast(paEdit?'Paciente actualizado.':'Paciente creado.');
     if (paCb){ const cb=paCb; paCb=null; cb(p); }
@@ -736,38 +757,86 @@ $('#f-lab').onsubmit=async e=>{
 };
 
 /* ---------- AJUSTES ---------- */
+const ROLES = {admin:'Administrador', profesional:'Profesional', secretaria:'Secretaria'};
+const sedeChecks = (sel, dis) => S.sedes.map(x=>`<label class="chk" style="font-size:13px"><input type="checkbox" data-sede="${esc(x.id)}" ${sel.includes(x.id)?'checked':''} ${dis?'disabled':''}> ${esc(x.nombre)}</label>`).join('');
+const profOpts = (cur, nombreNuevo) => `<option value="">Sin agenda propia</option>`+(nombreNuevo?`<option value="__nuevo">Crear profesional: ${esc(nombreNuevo)}</option>`:'')+(S.profAll||[]).map(p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(nombreProf(p))} · ${esc((S.sedes.find(x=>x.id===p.sede_id)||{}).nombre||'')}</option>`).join('');
 async function pintarAjustes(){
-  const c=$('#cfg-cons'); ['nombre','sede','direccion','hora_desde','hora_hasta','duracion'].forEach(k=>c[k].value=S.cfg[k]??'');
+  const admin = perfil.rol==='admin';
+  const c=$('#cfg-cons'); c.hidden=!admin; $('#cfg-tpl').hidden=!admin;
+  $('#cfg-ttl').textContent = 'Sede ' + (S.cfg.sede||'');
+  c.nombre.value=S.cfg.nombre||''; c.sede.value=S.cfg.sede||''; c.direccion.value=S.cfg.direccion||''; c.hora_desde.value=S.cfg.hora_desde; c.hora_hasta.value=S.cfg.hora_hasta; c.duracion.value=S.cfg.duracion;
   $('#cfg-dias').innerHTML=[1,2,3,4,5,6,0].map(d=>`<label class="chk"><input type="checkbox" value="${d}" ${(S.cfg.dias||[]).includes(d)?'checked':''}> ${DIAS3[d]}</label>`).join('');
   const t=$('#cfg-tpl'); ['recordatorio','cumpleanos','control'].forEach(k=>t[k].value=S.tpl[k]||'');
-  $('#prof-list').innerHTML = S.prof.map(p=>`<div class="item" data-id="${p.id}"><div class="t" style="display:flex;gap:8px;align-items:center"><span style="width:14px;height:14px;border-radius:4px;background:${esc(p.color)};flex:none"></span><b>${esc(nombreProf(p))}</b></div><span>${p.activo?'':'<span class="pill">inactivo</span> '}<button class="link" data-a="tog">${p.activo?'Desactivar':'Activar'}</button></span></div>`).join('') || '<p class="hint">Sin profesionales.</p>';
-  const admin = perfil.rol==='admin';
+  $('#prof-add').hidden = perfil.rol==='profesional';
+  $('#prof-list').innerHTML = S.prof.map(p=>`<div class="item" data-id="${p.id}"><div class="t" style="display:flex;gap:8px;align-items:center"><span style="width:14px;height:14px;border-radius:4px;background:${esc(p.color)};flex:none"></span><b>${esc(nombreProf(p))}</b></div><span>${p.activo?'':'<span class="pill">inactivo</span> '}${perfil.rol==='profesional'?'':`<button class="link" data-a="tog">${p.activo?'Desactivar':'Activar'}</button>`}</span></div>`).join('') || `<p class="hint">Todavía no hay profesionales en ${esc(S.cfg.sede||'esta sede')}.</p>`;
   $('#usr-card').hidden = !admin;
   if (admin){
     S.personal = await q(sb.from('personal').select('*').order('creado'));
-    $('#usr-list').innerHTML = S.personal.map(u=>`<div class="item" data-id="${u.user_id}"><div class="t"><b>${esc(u.nombre||u.email)}</b><span>${esc(u.email)}${u.user_id===me.id?' · vos':''}</span></div>${u.user_id===me.id?'<span class="pill">'+esc(u.rol)+'</span>':`<select data-a="rol" style="width:auto"><option value="admin">Administrador</option><option value="profesional">Profesional</option><option value="secretaria">Secretaria</option></select><button class="link" data-a="act">${u.activo?'Quitar acceso':'Dar acceso'}</button>`}</div>`).join('');
-    $$('#usr-list select[data-a=rol]').forEach(s=>{ const u=S.personal.find(x=>x.user_id===s.closest('.item').dataset.id); s.value=u.rol; });
+    $('#usr-list').innerHTML = S.personal.map(u=>{ const yo=u.user_id===me.id;
+      return `<div class="card" data-id="${u.user_id}" style="padding:10px;display:flex;flex-direction:column;gap:8px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div class="t"><b>${esc(u.nombre||u.email)}</b><div class="hint">${esc(u.email)}${yo?' · vos':''}</div></div>${u.activo?'':'<span class="pill bad">sin acceso</span>'}</div>
+        <div class="row"><label>Rol<select data-k="rol" ${yo?'disabled':''}>${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${u.rol===k?'selected':''}>${v}</option>`).join('')}</select></label>
+        <label>Su agenda<select data-k="profesional_id">${profOpts(u.profesional_id)}</select></label></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><span class="hint">Sedes:</span>${sedeChecks(u.sedes||[], u.rol==='admin')}${u.rol==='admin'?'<span class="hint">(un administrador ve todas)</span>':''}</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">${yo?'':`<button class="btn ghost" data-a="act" style="padding:6px 10px">${u.activo?'Quitar acceso':'Dar acceso'}</button>`}<button class="btn" data-a="guardar" style="padding:6px 10px">Guardar</button></div></div>`; }).join('');
     try{ S.pend = await q(sb.rpc('usuarios_pendientes')); }catch(e){ S.pend=[]; }
-    $('#usr-pend').innerHTML = S.pend.length ? '<h3 style="margin:6px 0">Esperando acceso</h3>'+S.pend.map(u=>`<div class="item" data-id="${u.user_id}" data-email="${esc(u.email)}"><div class="t"><b>${esc(u.email)}</b></div><select data-a="nrol" style="width:auto"><option value="secretaria">Secretaria</option><option value="profesional">Profesional</option><option value="admin">Administrador</option></select><button class="btn" data-a="hab" style="padding:6px 10px">Habilitar</button></div>`).join('') : '';
+    $('#usr-pend').innerHTML = S.pend.length ? '<h3 style="margin:6px 0">Esperando acceso</h3>'+S.pend.map(u=>`<div class="card" data-id="${u.user_id}" data-email="${esc(u.email)}" data-nombre="${esc(u.nombre||'')}" style="padding:10px;display:flex;flex-direction:column;gap:8px;margin-bottom:8px;border-color:var(--acc)">
+        <div class="t"><b>${esc(u.nombre||u.email)}</b><div class="hint">${esc(u.email)}</div></div>
+        <div class="row"><label>Rol<select data-k="rol"><option value="profesional">Profesional</option><option value="secretaria">Secretaria</option><option value="admin">Administrador</option></select></label>
+        <label>Su agenda<select data-k="profesional_id">${profOpts('', u.nombre||u.email.split('@')[0])}</select></label></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><span class="hint">Sedes:</span>${sedeChecks([sedeId], false)}</div>
+        <div style="display:flex;justify-content:flex-end"><button class="btn" data-a="hab" style="padding:6px 10px">Habilitar</button></div></div>`).join('') : '';
+    $$('#usr-pend select[data-k=profesional_id]').forEach(x=>x.value='__nuevo');
   }
-  $('#ses-info').textContent = `Ingresaste como ${me.email} (${perfil.rol}).`;
+  $('#ses-info').textContent = `Ingresaste como ${me.email} (${ROLES[perfil.rol]||perfil.rol}).`;
+}
+function leerUsuario(card){
+  const rol = card.querySelector('[data-k=rol]').value;
+  const sedes = rol==='admin' ? S.sedes.map(x=>x.id) : [...card.querySelectorAll('input[data-sede]:checked')].map(i=>i.dataset.sede);
+  return { rol, sedes, profesional_id: card.querySelector('[data-k=profesional_id]').value };
+}
+async function profParaUsuario(val, nombre, sedes){
+  if (val!=='__nuevo') return val||null;
+  const pr = await q(sb.from('profesionales').insert({ nombre, titulo:'Dr.', sede_id: sedes.includes(sedeId)?sedeId:(sedes[0]||sedeId) }).select().single());
+  S.profAll.push(pr); if (pr.sede_id===sedeId) S.prof.push(pr); pintarProfSelects(); return pr.id;
 }
 $('#cfg-cons').onsubmit=async e=>{ e.preventDefault(); const c=e.target;
-  const v={...S.cfg, nombre:c.nombre.value.trim(), sede:c.sede.value.trim(), direccion:c.direccion.value.trim(), hora_desde:c.hora_desde.value, hora_hasta:c.hora_hasta.value, duracion:+c.duracion.value||30, dias:$$('#cfg-dias input:checked').map(i=>+i.value)};
+  const v={ nombre:c.sede.value.trim()||S.cfg.sede, direccion:c.direccion.value.trim(), hora_desde:c.hora_desde.value, hora_hasta:c.hora_hasta.value, duracion:+c.duracion.value||30, dias:$$('#cfg-dias input:checked').map(i=>+i.value) };
   if (toMin(v.hora_hasta)<=toMin(v.hora_desde)){ toast('La hora de cierre tiene que ser después de la de apertura.', true); return; }
-  try{ await q(sb.from('config').upsert({clave:'consultorio', valor:v})); S.cfg=v; $('#h-sede').textContent=v.sede||'Consultorio'; toast('Guardado.'); }catch(err){ toast(errMsg(err), true); } };
+  try{
+    const se = await q(sb.from('sedes').update(v).eq('id', sedeId).select().single());
+    S.sedes = S.sedes.map(x=>x.id===sedeId?se:x);
+    const nom=c.nombre.value.trim(); if (nom && nom!==S.cons.nombre){ S.cons={...S.cons, nombre:nom}; await q(sb.from('config').upsert({clave:'consultorio', valor:S.cons})); }
+    $('#h-sede-sel').innerHTML = S.sedes.map(x=>`<option value="${esc(x.id)}">${esc(x.nombre)}</option>`).join('');
+    aplicarSede(); pintarAjustes(); toast('Guardado.');
+  }catch(err){ toast(errMsg(err), true); } };
 $('#cfg-tpl').onsubmit=async e=>{ e.preventDefault(); const t=e.target; const v={recordatorio:t.recordatorio.value.trim(), cumpleanos:t.cumpleanos.value.trim(), control:t.control.value.trim()};
   try{ await q(sb.from('config').upsert({clave:'plantillas', valor:v})); S.tpl=v; toast('Mensajes guardados.'); }catch(err){ toast(errMsg(err), true); } };
 $('#prof-add').onsubmit=async e=>{ e.preventDefault(); const f=e.target;
-  try{ const p=await q(sb.from('profesionales').insert({titulo:f.titulo.value.trim(), nombre:f.nombre.value.trim(), color:f.color.value}).select().single()); S.prof.push(p); f.nombre.value=''; pintarProfSelects(); pintarAjustes(); toast('Profesional agregado.'); }catch(err){ toast(errMsg(err), true); } };
+  try{ const p=await q(sb.from('profesionales').insert({titulo:f.titulo.value.trim(), nombre:f.nombre.value.trim(), color:f.color.value, sede_id:sedeId}).select().single()); S.profAll.push(p); S.prof.push(p); f.nombre.value=''; pintarProfSelects(); pintarAjustes(); toast('Profesional agregado a '+(S.cfg.sede||'la sede')+'.'); }catch(err){ toast(errMsg(err), true); } };
 $('#prof-list').addEventListener('click', async e=>{ if(e.target.dataset.a!=='tog') return; const p=profById(e.target.closest('.item').dataset.id);
   try{ await q(sb.from('profesionales').update({activo:!p.activo}).eq('id',p.id)); p.activo=!p.activo; pintarProfSelects(); pintarAjustes(); }catch(err){ toast(errMsg(err), true); } });
-$('#usr-list').addEventListener('change', async e=>{ if(e.target.dataset.a!=='rol') return; const id=e.target.closest('.item').dataset.id;
-  try{ await q(sb.from('personal').update({rol:e.target.value}).eq('user_id',id)); toast('Rol actualizado.'); }catch(err){ toast(errMsg(err), true); } });
-$('#usr-list').addEventListener('click', async e=>{ if(e.target.dataset.a!=='act') return; const id=e.target.closest('.item').dataset.id; const u=S.personal.find(x=>x.user_id===id);
-  try{ await q(sb.from('personal').update({activo:!u.activo}).eq('user_id',id)); pintarAjustes(); toast(u.activo?'Acceso quitado.':'Acceso dado.'); }catch(err){ toast(errMsg(err), true); } });
-$('#usr-pend').addEventListener('click', async e=>{ if(e.target.dataset.a!=='hab') return; const it=e.target.closest('.item');
-  try{ await q(sb.from('personal').insert({user_id:it.dataset.id, email:it.dataset.email, rol:it.querySelector('select').value})); pintarAjustes(); toast('Usuario habilitado.'); }catch(err){ toast(errMsg(err), true); } });
+$('#usr-list').addEventListener('change', e=>{ if(e.target.dataset.k==='rol'){ const card=e.target.closest('.card'); const adm=e.target.value==='admin'; card.querySelectorAll('input[data-sede]').forEach(i=>{ i.disabled=adm; if(adm) i.checked=true; }); } });
+$('#usr-list').addEventListener('click', async e=>{
+  const card=e.target.closest('.card[data-id]'); if(!card) return; const id=card.dataset.id; const u=S.personal.find(x=>x.user_id===id);
+  try{
+    if (e.target.dataset.a==='act'){ await q(sb.from('personal').update({activo:!u.activo}).eq('user_id',id)); toast(u.activo?'Acceso quitado.':'Acceso dado.'); pintarAjustes(); }
+    if (e.target.dataset.a==='guardar'){ const v=leerUsuario(card); if(!v.sedes.length){ toast('Elegí al menos una sede.', true); return; }
+      if (id===me.id) v.rol='admin';
+      await q(sb.from('personal').update({ rol:v.rol, sedes:v.sedes, profesional_id:v.profesional_id||null }).eq('user_id',id));
+      if (id===me.id){ perfil={...perfil, ...v}; } toast('Usuario actualizado.'); pintarAjustes(); }
+  }catch(err){ toast(errMsg(err), true); }
+});
+$('#usr-pend').addEventListener('change', e=>{ if(e.target.dataset.k==='rol'){ const card=e.target.closest('.card'); const adm=e.target.value==='admin'; card.querySelectorAll('input[data-sede]').forEach(i=>{ i.disabled=adm; if(adm) i.checked=true; }); if(e.target.value==='secretaria') card.querySelector('[data-k=profesional_id]').value=''; } });
+$('#usr-pend').addEventListener('click', async e=>{ if(e.target.dataset.a!=='hab') return; const card=e.target.closest('.card');
+  const v=leerUsuario(card); if(!v.sedes.length){ toast('Elegí al menos una sede.', true); return; }
+  e.target.disabled=true;
+  try{
+    const pid = await profParaUsuario(v.profesional_id, card.dataset.nombre||card.dataset.email.split('@')[0], v.sedes);
+    await q(sb.from('personal').insert({ user_id:card.dataset.id, email:card.dataset.email, nombre:card.dataset.nombre||'', rol:v.rol, sedes:v.sedes, profesional_id:pid }));
+    toast('Usuario habilitado.'); pintarAjustes();
+  }catch(err){ toast(errMsg(err), true); e.target.disabled=false; }
+});
 
 /* ---------- arranque ---------- */
 async function iniciar(){

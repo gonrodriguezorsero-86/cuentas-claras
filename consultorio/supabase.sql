@@ -186,3 +186,128 @@ grant execute on function public.es_admin() to authenticated;
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;
+
+-- =====================================================================
+-- Etapa 1b · Sedes (Avellaneda y Campana) y permisos por sede
+-- Se puede correr varias veces.
+-- =====================================================================
+
+create table if not exists public.sedes (
+  id text primary key,
+  nombre text not null,
+  direccion text not null default '',
+  hora_desde text not null default '13:00',
+  hora_hasta text not null default '19:30',
+  duracion int not null default 30,
+  dias jsonb not null default '[1,2,3,4,5]',
+  activo boolean not null default true,
+  creado timestamptz not null default now()
+);
+insert into public.sedes (id, nombre) values ('avellaneda', 'Avellaneda'), ('campana', 'Campana')
+on conflict (id) do nothing;
+
+-- Pasar el horario que ya estaba cargado a la sede Avellaneda
+update public.sedes s set
+  direccion = coalesce(c.valor->>'direccion', s.direccion),
+  hora_desde = coalesce(c.valor->>'hora_desde', s.hora_desde),
+  hora_hasta = coalesce(c.valor->>'hora_hasta', s.hora_hasta),
+  duracion = coalesce((c.valor->>'duracion')::int, s.duracion),
+  dias = coalesce(c.valor->'dias', s.dias)
+from public.config c
+where c.clave = 'consultorio' and s.id = 'avellaneda' and not coalesce((c.valor->>'migrado')::boolean, false);
+update public.config set valor = valor || '{"migrado": true}' where clave = 'consultorio';
+
+alter table public.personal add column if not exists sedes text[] not null default '{avellaneda}';
+alter table public.profesionales add column if not exists sede_id text not null default 'avellaneda' references public.sedes(id);
+alter table public.pacientes add column if not exists sede_id text not null default 'avellaneda' references public.sedes(id);
+alter table public.turnos add column if not exists sede_id text not null default 'avellaneda' references public.sedes(id);
+create index if not exists pacientes_sede on public.pacientes (sede_id);
+create index if not exists turnos_sede on public.turnos (sede_id, inicio);
+
+-- Los administradores tienen todas las sedes
+update public.personal set sedes = array(select id from public.sedes) where rol = 'admin';
+
+-- ---------- funciones de permisos ----------
+create or replace function public.mi_rol() returns text
+language sql stable security definer set search_path = public as $$
+  select rol from public.personal where user_id = auth.uid() and activo;
+$$;
+
+create or replace function public.puede_sede(s text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.personal
+                 where user_id = auth.uid() and activo and (rol = 'admin' or s = any(sedes)));
+$$;
+
+create or replace function public.mi_profesional() returns uuid
+language sql stable security definer set search_path = public as $$
+  select profesional_id from public.personal where user_id = auth.uid() and activo;
+$$;
+
+-- El primer usuario queda administrador de todas las sedes
+create or replace function public.nuevo_usuario() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from public.personal) then
+    insert into public.personal (user_id, nombre, email, rol, sedes)
+    values (new.id, coalesce(new.raw_user_meta_data->>'nombre', ''), coalesce(new.email, ''), 'admin',
+            array(select id from public.sedes));
+  end if;
+  return new;
+end $$;
+
+-- Usuarios pendientes: ahora también con el nombre que pusieron al registrarse
+drop function if exists public.usuarios_pendientes();
+create or replace function public.usuarios_pendientes()
+returns table (user_id uuid, email text, nombre text, creado timestamptz)
+language sql stable security definer set search_path = public as $$
+  select u.id, u.email::text, coalesce(u.raw_user_meta_data->>'nombre', ''), u.created_at
+  from auth.users u
+  where public.es_admin() and not exists (select 1 from public.personal p where p.user_id = u.id)
+  order by u.created_at desc;
+$$;
+revoke all on function public.usuarios_pendientes() from public, anon;
+grant execute on function public.usuarios_pendientes() to authenticated;
+grant execute on function public.mi_rol() to authenticated;
+grant execute on function public.puede_sede(text) to authenticated;
+grant execute on function public.mi_profesional() to authenticated;
+
+-- ---------- reglas de acceso ----------
+alter table public.sedes enable row level security;
+drop policy if exists sedes_ver on public.sedes;
+create policy sedes_ver on public.sedes for select to authenticated using (public.puede_sede(id));
+drop policy if exists sedes_admin on public.sedes;
+create policy sedes_admin on public.sedes for all to authenticated using (public.es_admin()) with check (public.es_admin());
+
+-- profesionales y pacientes: cada uno ve los de sus sedes
+drop policy if exists personal_todo on public.profesionales;
+drop policy if exists por_sede on public.profesionales;
+create policy por_sede on public.profesionales for all to authenticated
+  using (public.puede_sede(sede_id)) with check (public.puede_sede(sede_id));
+
+drop policy if exists personal_todo on public.pacientes;
+drop policy if exists por_sede on public.pacientes;
+create policy por_sede on public.pacientes for all to authenticated
+  using (public.puede_sede(sede_id)) with check (public.puede_sede(sede_id));
+
+-- turnos: admin y secretaria ven la agenda de la sede; un profesional ve solo la suya
+drop policy if exists personal_todo on public.turnos;
+drop policy if exists por_sede on public.turnos;
+create policy por_sede on public.turnos for all to authenticated
+  using (public.puede_sede(sede_id) and (public.mi_rol() <> 'profesional' or profesional_id = public.mi_profesional()))
+  with check (public.puede_sede(sede_id) and (public.mi_rol() <> 'profesional' or profesional_id = public.mi_profesional()));
+
+-- laboratorio G3: solo administradores
+drop policy if exists personal_todo on public.lab_trabajos;
+drop policy if exists solo_admin on public.lab_trabajos;
+create policy solo_admin on public.lab_trabajos for all to authenticated
+  using (public.es_admin()) with check (public.es_admin());
+
+-- configuración (mensajes): todos la leen, solo admin la cambia
+drop policy if exists personal_todo on public.config;
+drop policy if exists config_ver on public.config;
+create policy config_ver on public.config for select to authenticated using (public.es_personal());
+drop policy if exists config_admin on public.config;
+create policy config_admin on public.config for all to authenticated using (public.es_admin()) with check (public.es_admin());
+
+grant select, insert, update, delete on all tables in schema public to authenticated;

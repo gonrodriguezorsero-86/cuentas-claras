@@ -82,7 +82,7 @@ main{padding:14px 16px calc(40px + env(safe-area-inset-bottom,0px));max-width:14
 .item .t{min-width:0}.item .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item .t span{font-size:12px;color:var(--mut)}
 .badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:999px;background:var(--bad);color:#fff;font:600 11px/18px var(--body,inherit);text-align:center;margin-left:2px}
-.pcols{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start}
+.pcols{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;align-items:start}
 @media(max-width:1000px){.pcols{grid-template-columns:1fr}}
 .item .acts{display:flex;gap:6px;flex-shrink:0}
 .item.done .t b{text-decoration:line-through;color:var(--mut)}
@@ -200,11 +200,13 @@ dialog form{display:flex;flex-direction:column;gap:12px}
         <div class="seg" id="pd-f"><button data-f="mias" class="on">Todas</button><button data-f="yo">Asignadas a mí</button><button data-f="hechas">Hechas</button></div>
         <span style="flex:1"></span>
         <button class="btn ghost" id="pd-nturno">+ Turno por dar</button>
+        <button class="btn ghost" id="pd-nlab">+ Trabajo de lab</button>
         <button class="btn" id="pd-ntarea">+ Tarea</button>
       </div>
       <div class="pcols">
         <div class="card"><h3>Turnos por dar</h3><p class="hint">Pacientes que esperan que les des turno.</p><div id="pd-turnos" style="margin-top:6px"></div></div>
         <div class="card"><h3>Para reprogramar</h3><p class="hint">Faltaron o cancelaron en los últimos 30 días y no tienen turno nuevo.</p><div id="pd-reprog" style="margin-top:6px"></div></div>
+        <div class="card"><h3>Laboratorio: por pedir y por recibir</h3><p class="hint">Coronas, placas, prótesis… pedidas a G3 o a otro laboratorio, hasta que se le entregan al paciente.</p><div id="pd-lab" style="margin-top:6px"></div></div>
         <div class="card"><h3>Tareas</h3><p class="hint">Cosas para hacer: llamar, pedir, cobrar, avisar.</p><div id="pd-tareas" style="margin-top:6px"></div></div>
       </div>
     </section>
@@ -344,8 +346,10 @@ dialog form{display:flex;flex-direction:column;gap:12px}
   <div class="acwrap" id="ta-pac-w"><label><span id="ta-pac-lab">Paciente (opcional)</span><input id="ta-pac-q" placeholder="Buscar paciente…" autocomplete="off"></label><div class="acl" id="ta-pac-l" hidden></div></div>
   <div class="sel" id="ta-pac-sel" hidden><span id="ta-pac-n"></span><button type="button" class="link" id="ta-pac-x">Cambiar</button></div>
   <label><span id="ta-tit-l">Qué hay que hacer</span><input name="titulo" autocomplete="off"></label>
+  <div class="row" id="ta-lab-w" hidden><label>Laboratorio<input name="laboratorio" list="dl-labs" autocomplete="off" placeholder="G3 Digital Art"></label><label>Lo pide<select name="profesional_id"></select></label></div>
   <label>Detalle<textarea name="detalle" rows="2"></textarea></label>
-  <div class="row"><label>Para cuándo<input name="vence" type="date"></label><label>Asignada a<select name="asignada_a"></select></label></div>
+  <div class="row"><label><span id="ta-vence-l">Para cuándo</span><input name="vence" type="date"></label><label>Asignada a<select name="asignada_a"></select></label></div>
+  <p class="hint" id="ta-info"></p>
   <div class="dacts"><span class="l"><button type="button" class="btn danger" id="ta-del">Borrar</button></span><button type="button" class="btn ghost" id="ta-cancel">Cerrar</button><button class="btn">Guardar</button></div>
 </form></dialog>
 <dialog id="d-lab"><form id="f-lab">
@@ -358,6 +362,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
   <div class="dacts"><span class="l"><button type="button" class="btn danger" id="lab-del">Borrar</button></span><button type="button" class="btn ghost" id="lab-cancel">Cerrar</button><button class="btn">Guardar</button></div>
 </form></dialog>
 <datalist id="dl-cli"></datalist>
+<datalist id="dl-labs"><option>G3 Digital Art</option></datalist>
 <datalist id="dl-trab"><option>Corona</option><option>Carilla</option><option>Incrustación</option><option>Encerado diagnóstico</option><option>Mock-up</option><option>Placa miorrelajante</option><option>Guía quirúrgica</option><option>Modelo impreso</option><option>Corona sobre implante</option><option>Provisorio</option></datalist>
 
 <script type="module">
@@ -683,8 +688,8 @@ async function abrirTurno(t, pre){
   $('#t-fecha').value = t?ymd(a):(pre.fecha||ymd(new Date()));
   $('#t-hora').value = t?hm(a):(pre.hora||S.cfg.hora_desde||'13:00');
   $('#t-dur').value = t?Math.round((new Date(t.fin)-a)/60000):(+S.cfg.duracion||30);
-  $('#t-prof').value = t?(t.profesional_id||''):(aProf||(S.prof.find(p=>p.activo)||{}).id||'');
-  $('#t-motivo').value = t?t.motivo:''; $('#t-estado').value=t?t.estado:'reservado'; $('#t-notas').value=t?t.notas:'';
+  $('#t-prof').value = t?(t.profesional_id||''):(pre.prof||aProf||(S.prof.find(p=>p.activo)||{}).id||'');
+  $('#t-motivo').value = t?t.motivo:(pre.motivo||''); $('#t-estado').value=t?t.estado:'reservado'; $('#t-notas').value=t?t.notas:'';
   $('#t-save').dataset.ok=''; $('#t-save').textContent='Guardar';
   $('#t-del').hidden=!t; $('#t-wa').hidden=!t; $('#t-del').dataset.c='';  $('#t-del').textContent='Borrar';
   $('#t-info').textContent = t&&t.recordatorio_enviado ? 'Recordatorio enviado el '+new Date(t.recordatorio_enviado).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})+'.' : '';
@@ -763,7 +768,29 @@ async function cargarReprog(){
 }
 const quien = uid => { const u=(S.personal||[]).find(x=>x.user_id===uid); return u ? (u.nombre||u.email) : ''; };
 function venceTxt(t){ if(!t.vence) return ''; const h=hoyYmd(); return t.vence<h ? `<span class="pill bad">venció ${fCorta(t.vence)}</span>` : (t.vence===h ? '<span class="pill acc">hoy</span>' : `<span class="pill">${fCorta(t.vence)}</span>`); }
+const G3 = 'G3 Digital Art';
+const esG3 = l => norm(l||'').replace(/\s/g,'').startsWith('g3');
+const LABEST = { a_pedir:'A pedir', pedido:'Pedido', recibido:'Llegó', colocado:'Entregado' };
+function labEstado(t){ // combina el estado propio con el de G3 Lab si está vinculado
+  const j = t.lab_id && (S.labPend||{})[t.lab_id];
+  if (j && t.estado_lab==='pedido' && ['Listo','Entregado'].includes(j.estado)) return { k:'recibido', g3:j.estado };
+  return { k:t.estado_lab||'a_pedir', g3:j?j.estado:'' };
+}
+function itemLab(t){
+  const p = t.paciente_id ? S.pacientes.get(t.paciente_id) : null, e = labEstado(t), h = hoyYmd();
+  const pr = t.profesional_id ? nombreProf(profById(t.profesional_id)) : '';
+  const sub = [t.laboratorio, pr, t.pedido_en?'pedido '+fCorta(t.pedido_en):'', t.vence?'llega '+fCorta(t.vence):'', e.g3?'G3: '+e.g3:'', t.detalle].filter(Boolean).join(' · ');
+  const late = !t.hecho && e.k==='pedido' && t.vence && t.vence<h;
+  const pill = t.hecho ? '' : (late ? '<span class="pill bad">atrasado</span>' : `<span class="pill ${e.k==='recibido'?'ok':(e.k==='a_pedir'?'acc':'')}">${e.k==='recibido'&&t.turno_id?'Llegó · con turno':LABEST[e.k]}</span>`);
+  const acts = t.hecho ? `<button class="btn ghost" data-a="reabrir" style="padding:6px 10px">Reabrir</button>`
+    : e.k==='a_pedir' ? `<button class="btn" data-a="pedido" style="padding:6px 10px">${esG3(t.laboratorio)?'Pedir a G3':'Ya lo pedí'}</button>`
+    : e.k==='pedido' ? `<button class="btn" data-a="llego" style="padding:6px 10px">Llegó</button>`
+    : t.turno_id ? `<button class="btn" data-a="hecho" style="padding:6px 10px">Entregado</button>`
+    : `<button class="btn" data-a="dar" style="padding:6px 10px">Turno para colocar</button><button class="btn ghost" data-a="hecho" style="padding:6px 10px">Entregado</button>`;
+  return `<div class="item${t.hecho?' done':''}" data-id="${t.id}"><div class="t" data-a="editar" style="cursor:pointer"><b>${esc(t.titulo||'Trabajo')} · ${esc(p?nombrePac(p):'')}</b><span>${esc(sub)}</span></div>${pill}<div class="acts">${acts}</div></div>`;
+}
 function itemTarea(t){
+  if (t.tipo==='lab') return itemLab(t);
   const p = t.paciente_id ? S.pacientes.get(t.paciente_id) : null;
   const tit = t.tipo==='turno' ? (p?nombrePac(p):'Paciente') : t.titulo;
   const sub = [t.tipo==='turno'?t.titulo:(p?nombrePac(p):''), t.detalle, t.asignada_a?'→ '+quien(t.asignada_a):''].filter(Boolean).join(' · ');
@@ -778,7 +805,9 @@ async function pintarPend(){
   let l = await cargarTareas(hechas);
   if (pdF==='yo') l = l.filter(t=>t.asignada_a===me.id);
   S.tareas = l;
-  const tur = l.filter(t=>t.tipo==='turno'), tar = l.filter(t=>t.tipo==='tarea');
+  await cargarLabVinc(l);
+  const tur = l.filter(t=>t.tipo==='turno'), tar = l.filter(t=>t.tipo==='tarea'), lab = l.filter(t=>t.tipo==='lab');
+  $('#pd-lab').innerHTML = lab.length ? lab.map(itemLab).join('') : `<p class="hint">${hechas?'Nada todavía.':'No hay trabajos pendientes de laboratorio.'}</p>`;
   $('#pd-turnos').innerHTML = tur.length ? tur.map(itemTarea).join('') : `<p class="hint">${hechas?'Nada todavía.':'No hay pacientes esperando turno.'}</p>`;
   $('#pd-tareas').innerHTML = tar.length ? tar.map(itemTarea).join('') : `<p class="hint">${hechas?'Nada todavía.':'No hay tareas pendientes.'}</p>`;
   const rw = $('#pd-reprog').closest('.card'); rw.hidden = hechas;
@@ -790,20 +819,26 @@ async function pintarPend(){
   }
   contarPend();
 }
-async function contarPend(){
-  try{
-    const { count } = await sb.from('tareas').select('id', { count:'exact', head:true }).eq('sede_id', sedeId).eq('hecho', false).or('vence.is.null,vence.lte.'+hoyYmd());
-    const b=$('#pend-n'); b.textContent=count||''; b.hidden=!count;
-  }catch(e){}
+async function cargarLabVinc(l){
+  S.labPend = S.labPend || {};
+  const ids = [...new Set(l.filter(t=>t.lab_id).map(t=>t.lab_id))];
+  if (!ids.length || perfil.rol!=='admin') return;
+  try{ (await q(sb.from('lab_trabajos').select('id,estado,entrega').in('id', ids))).forEach(j=>S.labPend[j.id]=j); }catch(e){}
 }
+// qué cuenta como "para hoy": tareas y turnos sin fecha o vencidos; lab: a pedir, llegó, o atrasado
+function paraHoy(t){ const h=hoyYmd();
+  if (t.tipo==='lab'){ const k=labEstado(t).k; return k==='a_pedir' || k==='recibido' || (k==='pedido' && t.vence && t.vence<h); }
+  return !t.vence || t.vence<=h; }
+async function contarPend(){ try{ await pintarPendSide(); }catch(e){} }
 async function pintarPendSide(){
   if (!sb) return;
   const l = await cargarTareas(false), h = hoyYmd();
-  const hoy = l.filter(t=>!t.vence || t.vence<=h);
+  await cargarLabVinc(l);
+  const hoy = l.filter(paraHoy);
   const b=$('#pend-n'); b.textContent=hoy.length||''; b.hidden=!hoy.length;
-  const tur = hoy.filter(t=>t.tipo==='turno').length, tar = hoy.length-tur, venc = hoy.filter(t=>t.vence && t.vence<h).length;
+  const tur = hoy.filter(t=>t.tipo==='turno').length, lb = hoy.filter(t=>t.tipo==='lab').length, tar = hoy.length-tur-lb, venc = hoy.filter(t=>t.vence && t.vence<h).length;
   $('#ps-list').innerHTML = hoy.length
-    ? `<div class="item"><div class="t"><b>${tur} ${tur===1?'turno por dar':'turnos por dar'} · ${tar} ${tar===1?'tarea':'tareas'}</b><span>${venc?venc+' vencidas · ':''}${hoy.slice(0,3).map(t=>esc(t.tipo==='turno'?nombrePac(S.pacientes.get(t.paciente_id)):t.titulo)).join(', ')}${hoy.length>3?'…':''}</span></div><button class="btn" data-a="ver" style="padding:6px 10px">Ver</button></div>`
+    ? `<div class="item"><div class="t"><b>${[tur?tur+' '+(tur===1?'turno por dar':'turnos por dar'):'', lb?lb+' de laboratorio':'', tar?tar+' '+(tar===1?'tarea':'tareas'):''].filter(Boolean).join(' · ')}</b><span>${venc?venc+' vencidas · ':''}${hoy.slice(0,3).map(t=>esc(t.tipo==='turno'?nombrePac(S.pacientes.get(t.paciente_id)):(t.tipo==='lab'?(t.titulo+' '+nombrePac(S.pacientes.get(t.paciente_id))):t.titulo))).join(', ')}${hoy.length>3?'…':''}</span></div><button class="btn" data-a="ver" style="padding:6px 10px">Ver</button></div>`
     : '<div class="item"><div class="t"><span>Nada pendiente para hoy.</span></div><button class="btn ghost" data-a="ver" style="padding:6px 10px">Ver</button></div>';
 }
 $('#ps-list').addEventListener('click', e=>{ if (e.target.dataset.a==='ver') irA('pendientes'); });
@@ -823,12 +858,27 @@ async function clickTarea(e){
     if (a.dataset.a==='hecho'){ await marcar(t,true); toast('Tarea hecha.'); }
     if (a.dataset.a==='reabrir'){ await marcar(t,false); toast('Volvió a pendientes.'); }
     if (a.dataset.a==='wa'){ abrirWa(p, rellenar(S.tpl.control||'Hola {nombre}! Te escribimos de RN Odontología para darte un turno. ¿Qué día y horario te queda cómodo?', p, null)); return; }
-    if (a.dataset.a==='dar'){ tareaDarTurno={ tarea:t.id }; abrirTurno(null, { paciente:p, fecha:hoyYmd() }); return; }
+    if (a.dataset.a==='dar'){ tareaDarTurno={ tarea:t.id, cerrar: t.tipo!=='lab' }; abrirTurno(null, { paciente:p, fecha:hoyYmd(), prof: t.profesional_id||'', motivo: t.tipo==='lab' ? 'Colocación '+(t.titulo||'') : (t.titulo||'') }); return; }
+    if (a.dataset.a==='pedido'){ await pedirLab(t, p); }
+    if (a.dataset.a==='llego'){ await q(sb.from('tareas').update({ estado_lab:'recibido' }).eq('id', t.id)); toast('Anotado: llegó. Falta darle turno al paciente.'); }
     pintarPend();
   }catch(err){ toast(errMsg(err), true); }
 }
 $('#pd-turnos').addEventListener('click', clickTarea);
 $('#pd-tareas').addEventListener('click', clickTarea);
+$('#pd-lab').addEventListener('click', clickTarea);
+$('#pd-nlab').onclick=()=>abrirTarea(null,'lab');
+async function pedirLab(t, p){
+  const upd = { estado_lab:'pedido', pedido_en: hoyYmd() };
+  if (esG3(t.laboratorio) && !t.lab_id && perfil.rol==='admin'){
+    const d=new Date(), id=d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+Math.floor(100+Math.random()*900);
+    const pr = t.profesional_id ? profById(t.profesional_id) : null;
+    await q(sb.from('lab_trabajos').insert({ id, paciente: nombrePac(p), cliente: pr ? pr.nombre : 'Sin asignar', trabajo: t.titulo||'Trabajo', ingreso: hoyYmd(), entrega: t.vence||null, estado:'Pendiente', notas: t.detalle||'', precio:0 }));
+    upd.lab_id = id;
+  }
+  await q(sb.from('tareas').update(upd).eq('id', t.id));
+  toast(upd.lab_id ? 'Pedido cargado en G3 Lab.' : 'Anotado como pedido.');
+}
 $('#pd-reprog').addEventListener('click', async e=>{
   const it=e.target.closest('.item[data-turno]'), a=e.target.closest('[data-a]'); if(!it||!a) return;
   const t=(S.reprog||[]).find(x=>x.id===it.dataset.turno); if(!t) return; const p=S.pacientes.get(t.paciente_id);
@@ -842,7 +892,8 @@ $('#pd-reprog').addEventListener('click', async e=>{
 async function cerrarPendienteTrasTurno(nuevo){
   const x=tareaDarTurno; tareaDarTurno=null; if(!x||!nuevo) return;
   try{
-    if (x.tarea) await q(sb.from('tareas').update({ hecho:true, hecho_en:new Date().toISOString(), hecho_por:me.id, turno_id:nuevo.id }).eq('id', x.tarea));
+    if (x.tarea && x.cerrar!==false) await q(sb.from('tareas').update({ hecho:true, hecho_en:new Date().toISOString(), hecho_por:me.id, turno_id:nuevo.id }).eq('id', x.tarea));
+    if (x.tarea && x.cerrar===false) await q(sb.from('tareas').update({ turno_id:nuevo.id }).eq('id', x.tarea));
     if (x.turno) await q(sb.from('tareas').insert({ sede_id:sedeId, tipo:'turno', titulo:'Reprogramado', paciente_id:x.turno.paciente_id, turno_id:x.turno.id, hecho:true, hecho_en:new Date().toISOString(), hecho_por:me.id }));
   }catch(e){}
 }
@@ -865,12 +916,20 @@ $('#ta-pac-q').addEventListener('blur', ()=>setTimeout(()=>$('#ta-pac-l').hidden
 async function abrirTarea(t, tipo){
   if (!S.pacientes.size) { try{ await cargarPacientes(); }catch(e){} }
   taEdit=t; taTipo=tipo||'tarea'; const f=$('#f-tarea'); f.reset();
-  $('#ta-ttl').textContent = taTipo==='turno' ? (t?'Turno por dar':'Nuevo turno por dar') : (t?'Tarea':'Nueva tarea');
-  $('#ta-tit-l').textContent = taTipo==='turno' ? 'Para qué (motivo)' : 'Qué hay que hacer';
-  $('#ta-pac-lab').textContent = taTipo==='turno' ? 'Paciente' : 'Paciente (opcional)';
-  f.titulo.placeholder = taTipo==='turno' ? 'Ej: control, limpieza, segunda sesión' : 'Ej: llamar a la obra social, pedir materiales';
+  const L = taTipo==='lab';
+  $('#ta-ttl').textContent = L ? (t?'Trabajo de laboratorio':'Nuevo trabajo de laboratorio') : taTipo==='turno' ? (t?'Turno por dar':'Nuevo turno por dar') : (t?'Tarea':'Nueva tarea');
+  $('#ta-tit-l').textContent = L ? 'Trabajo' : taTipo==='turno' ? 'Para qué (motivo)' : 'Qué hay que hacer';
+  $('#ta-pac-lab').textContent = taTipo==='tarea' ? 'Paciente (opcional)' : 'Paciente';
+  $('#ta-vence-l').textContent = L ? 'Llega / lo necesito para' : 'Para cuándo';
+  f.titulo.placeholder = L ? 'Ej: corona zirconio 2.6, placa miorrelajante' : taTipo==='turno' ? 'Ej: control, limpieza, segunda sesión' : 'Ej: llamar a la obra social, pedir materiales';
+  f.titulo.setAttribute('list', L ? 'dl-trab' : '');
+  $('#ta-lab-w').hidden = !L;
+  f.profesional_id.innerHTML = '<option value="">—</option>' + S.prof.map(pr=>`<option value="${pr.id}">${esc(nombreProf(pr))}</option>`).join('');
+  $('#dl-labs').innerHTML = [...new Set([G3, ...(S.tareas||[]).filter(x=>x.tipo==='lab').map(x=>x.laboratorio).filter(Boolean)])].map(x=>`<option value="${esc(x)}">`).join('');
+  if (L && !t){ f.laboratorio.value = G3; f.profesional_id.value = perfil.profesional_id && S.prof.some(x=>x.id===perfil.profesional_id) ? perfil.profesional_id : ''; }
+  $('#ta-info').textContent = L ? (perfil.rol==='admin' ? 'Si el laboratorio es G3, al tocar "Pedir a G3" se carga solo en G3 Lab y acá ves cuándo está listo.' : '') : '';
   f.asignada_a.innerHTML = '<option value="">Cualquiera</option>' + (S.personal||[]).filter(u=>u.activo).map(u=>`<option value="${u.user_id}">${esc(u.nombre||u.email)}</option>`).join('');
-  if (t){ f.titulo.value=t.titulo||''; f.detalle.value=t.detalle||''; f.vence.value=t.vence||''; f.asignada_a.value=t.asignada_a||''; }
+  if (t){ f.titulo.value=t.titulo||''; f.detalle.value=t.detalle||''; f.vence.value=t.vence||''; f.asignada_a.value=t.asignada_a||''; f.laboratorio.value=t.laboratorio||''; f.profesional_id.value=t.profesional_id||''; }
   selTaPac(t&&t.paciente_id ? (S.pacientes.get(t.paciente_id)||null) : null); $('#ta-pac-q').value='';
   $('#ta-del').hidden=!t; $('#ta-del').dataset.c=''; $('#ta-del').textContent='Borrar';
   $('#d-tarea').showModal();
@@ -882,7 +941,8 @@ $('#ta-del').onclick=async()=>{ const b=$('#ta-del'); if(!b.dataset.c){ b.datase
 $('#f-tarea').onsubmit=async e=>{
   e.preventDefault(); const f=e.target;
   const row={ sede_id:sedeId, tipo:taTipo, titulo:f.titulo.value.trim(), detalle:f.detalle.value.trim(), vence:f.vence.value||null, asignada_a:f.asignada_a.value||null, paciente_id:taPac?taPac.id:null };
-  if (taTipo==='turno' && !row.paciente_id){ toast('Elegí el paciente.', true); return; }
+  if (taTipo==='lab'){ row.laboratorio=f.laboratorio.value.trim(); row.profesional_id=f.profesional_id.value||null; if(!row.titulo){ toast('Escribí qué trabajo es.', true); return; } }
+  if (taTipo!=='tarea' && !row.paciente_id){ toast('Elegí el paciente.', true); return; }
   if (taTipo==='tarea' && !row.titulo){ toast('Escribí qué hay que hacer.', true); return; }
   try{
     if (taEdit) await q(sb.from('tareas').update(row).eq('id', taEdit.id)); else await q(sb.from('tareas').insert(row));

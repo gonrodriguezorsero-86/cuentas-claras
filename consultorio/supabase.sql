@@ -373,3 +373,11 @@ grant all on public.tareas to service_role;
 drop trigger if exists tareas_actualizado on public.tareas;
 create trigger tareas_actualizado before update on public.tareas for each row execute function public.marcar_actualizado();
 select count(*) as tareas from public.tareas;
+-- Etapa 2b · Trabajos de laboratorio por pedir/recibir (en Pendientes)
+alter table public.tareas drop constraint if exists tareas_tipo_check;
+alter table public.tareas add constraint tareas_tipo_check check (tipo in ('tarea','turno','lab'));
+alter table public.tareas add column if not exists laboratorio text not null default '';
+alter table public.tareas add column if not exists estado_lab text not null default 'a_pedir';
+alter table public.tareas add column if not exists pedido_en date;
+alter table public.tareas add column if not exists lab_id text;
+select column_name from information_schema.columns where table_name='tareas' and column_name in ('laboratorio','estado_lab','pedido_en','lab_id') order by 1;

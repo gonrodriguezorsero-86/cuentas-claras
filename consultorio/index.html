@@ -369,7 +369,7 @@ $('#f-login').onsubmit = async e => {
   const email=$('#l-email').value.trim(), password=$('#l-pass').value;
   try{
     if (modoAlta){
-      const { data, error } = await sb.auth.signUp({ email, password, options:{ data:{ nombre:$('#l-nombre').value.trim() } } });
+      const { data, error } = await sb.auth.signUp({ email, password, options:{ data:{ nombre:$('#l-nombre').value.trim() }, emailRedirectTo: location.origin+location.pathname } });
       if (error) throw error;
       if (!data.session){ $('#l-msg').textContent='Listo. Te mandamos un email para confirmar la cuenta; después ingresá acá.'; b.disabled=false; return; }
     } else {

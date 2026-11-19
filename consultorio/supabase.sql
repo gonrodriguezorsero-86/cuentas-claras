@@ -181,3 +181,8 @@ revoke all on function public.usuarios_pendientes() from public, anon;
 grant execute on function public.usuarios_pendientes() to authenticated;
 grant execute on function public.es_personal() to authenticated;
 grant execute on function public.es_admin() to authenticated;
+
+-- ---------- permisos para usuarios con sesión (la seguridad por fila sigue aplicando) ----------
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;

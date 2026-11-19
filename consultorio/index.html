@@ -138,6 +138,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
     <button class="btn" id="l-btn">Ingresar</button>
     <button type="button" class="link" id="l-toggle">Crear una cuenta nueva</button>
     <p class="hint" id="l-msg"></p>
+    <button type="button" class="btn ghost" id="l-instalar" hidden>Instalar como app en esta compu</button>
     <button type="button" class="link" id="l-reset" style="font-size:12px;color:var(--mut)">Cambiar la base de datos conectada</button>
   </form>
 </section>
@@ -253,6 +254,12 @@ dialog form{display:flex;flex-direction:column;gap:12px}
           <h3>Sesión</h3>
           <p class="hint" id="ses-info"></p>
           <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="b-salir">Cerrar sesión</button></div>
+          <p class="hint">Por seguridad, la sesión se cierra sola cuando cerrás la ventana de la app.</p>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:10px" id="inst-card">
+          <h3>Instalar como app</h3>
+          <p class="hint" id="inst-info">Instalala para abrirla desde un ícono propio, en su ventana, sin abrir el navegador.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="b-instalar" hidden>Instalar RN Consultorio</button></div>
         </div>
       </div>
     </section>
@@ -359,7 +366,9 @@ let sb = null, me = null, perfil = null;
 const S = { prof:[], cfg:{}, tpl:{}, pacientes:new Map(), turnos:[], lab:[], personal:[], pend:[] };
 
 function conectar(){
-  sb = createClient(conn.url, conn.key, { auth:{ persistSession:true, autoRefreshToken:true } });
+  // La sesión vive solo mientras la ventana está abierta: al cerrarla hay que volver a ingresar.
+  try{ Object.keys(localStorage).filter(k=>/^sb-.*-auth-token/.test(k)).forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  sb = createClient(conn.url, conn.key, { auth:{ persistSession:true, autoRefreshToken:true, storage: window.sessionStorage } });
   sb.auth.onAuthStateChange((ev, ses) => { if (ev==='SIGNED_OUT') { me=null; show('#v-login'); } });
 }
 $('#s-ok').onclick = async () => {
@@ -921,6 +930,21 @@ if (conn) conectar();
 iniciar();
 setInterval(()=>{ if(!$('#v-app').hidden && vista==='agenda' && !document.querySelector('dialog[open]')) pintarAgenda().catch(()=>{}); }, 60000);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+/* ---------- instalar como app ---------- */
+(()=>{
+  let ev=null;
+  const instalada = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const info = $('#inst-info');
+  const botones = ['#b-instalar','#l-instalar'].map(x=>$(x));
+  const mostrar = v => botones.forEach(b=>{ if(b) b.hidden=!v; });
+  if (instalada) { info.textContent='Ya la estás usando como app instalada.'; return; }
+  if (ios) info.textContent='En iPhone: tocá Compartir y después "Agregar a inicio".';
+  else info.textContent='Si no aparece el botón: en Chrome o Edge, menú ⋮ → "Instalar RN Consultorio" (o el ícono de instalar en la barra de direcciones).';
+  addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); ev=e; mostrar(true); info.textContent='Instalala para abrirla desde un ícono propio, en su ventana, sin abrir el navegador.'; });
+  botones.forEach(b=>b && (b.onclick=async()=>{ if(!ev) return; ev.prompt(); const r=await ev.userChoice; ev=null; mostrar(false); if(r.outcome==='accepted') toast('Listo: quedó instalada. Abrila desde el ícono RN.'); }));
+  addEventListener('appinstalled', ()=>{ mostrar(false); info.textContent='Instalada. Abrila desde el ícono RN Consultorio.'; });
+})();
 </script>
 </body>
 </html>

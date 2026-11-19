@@ -4,7 +4,15 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SB_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SB_KEY = Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+function claveServidor(): string {
+  try {
+    const d = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
+    const v = d.default ?? Object.values(d)[0];
+    if (typeof v === "string" && v) return v;
+  } catch (_) { /* sigue */ }
+  return Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+}
+const SB_KEY = claveServidor();
 const CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") ?? "";
 const CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET") ?? "";
 const APP_URL = Deno.env.get("APP_URL") ?? "https://gonrodriguezorsero-86.github.io/cuentas-claras/consultorio/";
@@ -17,7 +25,7 @@ const db = createClient(SB_URL, SB_KEY, { auth: { persistSession: false, autoRef
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-api-version, x-region",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 const json = (o: unknown, status = 200) =>

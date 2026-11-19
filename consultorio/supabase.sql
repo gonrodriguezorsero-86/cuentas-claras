@@ -336,3 +336,10 @@ alter table public.google_cuentas enable row level security;
 alter table public.google_estado enable row level security;
 revoke all on public.google_cuentas from anon, authenticated;
 revoke all on public.google_estado from anon, authenticated;
+
+-- Etapa 1d · Permisos del servidor (la función gcal usa el rol service_role)
+grant usage on schema public to service_role;
+grant all on all tables in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+grant execute on all functions in schema public to service_role;
+alter default privileges in schema public grant all on tables to service_role;

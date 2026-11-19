@@ -355,7 +355,7 @@ function conectar(){
   sb.auth.onAuthStateChange((ev, ses) => { if (ev==='SIGNED_OUT') { me=null; show('#v-login'); } });
 }
 $('#s-ok').onclick = async () => {
-  const url=$('#s-url').value.trim().replace(/\/$/,''), key=$('#s-key').value.trim();
+  let url=$('#s-url').value.trim().replace(/\/(rest|auth)\/v1.*$/,'').replace(/\/+$/,''); if(/^[a-z0-9]{20}$/.test(url)) url='https://'+url+'.supabase.co'; const key=$('#s-key').value.trim();
   if (!/^https:\/\/.+/.test(url) || key.length<20) { toast('Revisá la URL y la clave.', true); return; }
   conn={url,key}; LS.set('rn_conn',conn); conectar(); iniciar();
 };

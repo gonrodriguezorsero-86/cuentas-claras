@@ -73,6 +73,8 @@ main{padding:14px 16px calc(40px + env(safe-area-inset-bottom,0px));max-width:14
 .ev{position:absolute;left:3px;right:3px;border-radius:7px;padding:3px 6px;font-size:12px;line-height:1.25;overflow:hidden;cursor:pointer;border-left:4px solid var(--c,#F5C400);background:#fffbe6;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .ev b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev.confirmado{background:#e9f6ef}.ev.atendido{background:#eef0f3;color:#555}.ev.ausente{background:#fbe9e7}.ev.cancelado{opacity:.45;text-decoration:line-through}
+.ev.fam{background:repeating-linear-gradient(45deg,#f1f1ee,#f1f1ee 6px,#e8e8e3 6px,#e8e8e3 12px);border-left-color:#8a8a85;color:#555;z-index:1;box-shadow:none}
+.ev:not(.fam){z-index:2}
 .nowline{position:absolute;left:0;right:0;border-top:2px solid var(--bad);z-index:2;pointer-events:none}
 .side{display:flex;flex-direction:column;gap:12px}
 .item{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
@@ -242,6 +244,11 @@ dialog form{display:flex;flex-direction:column;gap:12px}
           <div id="usr-pend"></div>
           <p class="hint">Para sumar a alguien: que entre a la app y toque "Crear una cuenta nueva". Después aparece acá para habilitarlo.</p>
         </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:10px" id="gc-card">
+          <h3>Google Calendar</h3>
+          <p class="hint">Cada turno aparece como "Ocupado – consultorio" (sin datos del paciente) en el calendario "RN · Turnos". Lo que se cargue en "RN · Familia" bloquea la agenda.</p>
+          <div id="gc-list"><p class="hint">Cargando…</p></div>
+        </div>
         <div class="card" style="display:flex;flex-direction:column;gap:10px">
           <h3>Sesión</h3>
           <p class="hint" id="ses-info"></p>
@@ -397,6 +404,22 @@ async function entrar(){
 
 /* ---------- datos ---------- */
 async function q(p){ const { data, error } = await p; if (error) throw error; return data; }
+async function gcal(body){
+  const { data, error } = await sb.functions.invoke('gcal', { body });
+  if (error){ let m=error.message; try{ const j=await error.context.json(); m=j.error||m; }catch(e){} throw new Error(m); }
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+function gcalSync(body){ gcal({ accion:'sync', ...body }).then(r=>{ if(r && r.sinGoogle===undefined && r.resultado) console.debug('gcal', r.resultado); }).catch(e=>console.warn('Google Calendar:', e.message)); }
+let famCache = { k:'', t:0, ev:[] };
+async function cargarFamilia(desde, hasta, ids){
+  if (!ids.length) return [];
+  const k = desde.toISOString()+hasta.toISOString()+ids.join(',');
+  if (famCache.k===k && Date.now()-famCache.t<60000) return famCache.ev;
+  try{ const r = await gcal({ accion:'familia', desde:desde.toISOString(), hasta:hasta.toISOString(), profesional_ids:ids }); famCache={k, t:Date.now(), ev:(r&&r.eventos)||[]}; }
+  catch(e){ famCache={k, t:Date.now(), ev:[]}; }
+  return famCache.ev;
+}
 let sedeId = LS.get('rn_sede', '');
 async function cargarBase(){
   const [sedes, prof, cfg, personal] = await Promise.all([
@@ -514,6 +537,8 @@ async function pintarAgenda(){
   const faltan = [...new Set(tur.map(t=>t.paciente_id).filter(id=>id && !S.pacientes.has(id)))];
   if (faltan.length){ const ps = await q(sb.from('pacientes').select('*').in('id', faltan)); ps.forEach(p=>S.pacientes.set(p.id,p)); }
   S.turnos = tur;
+  const famIds = aProf ? [aProf] : S.prof.filter(p=>p.activo).map(p=>p.id);
+  S.fam = await cargarFamilia(desde, hasta, famIds);
   const enRango = tur.filter(t=>new Date(t.inicio)>=desde && new Date(t.inicio)<hasta && (!aProf || t.profesional_id===aProf));
   // título
   if (aModo==='dia') $('#a-ttl').textContent = DIAS[aFecha.getDay()].replace(/^./,c=>c.toUpperCase())+' '+aFecha.getDate()+' de '+MESES[aFecha.getMonth()];
@@ -537,6 +562,14 @@ async function pintarAgenda(){
     const laborable=(S.cfg.dias||[]).includes(d.getDay());
     h+=`<div class="dcol" data-d="${ymd(d)}">`;
     for(let m=ini;m<fin;m+=slot){ const off=!laborable||m<dIni||m>=dFin; h+=`<div class="s${off?' off':''}" data-m="${m}"></div>`; }
+    const d0=startDay(d), d1=addDays(d0,1);
+    (S.fam||[]).filter(f=>new Date(f.inicio)<d1 && new Date(f.fin)>d0).forEach(f=>{
+      const a=new Date(Math.max(+new Date(f.inicio), +d0)), b=new Date(Math.min(+new Date(f.fin), +d1));
+      const am=Math.max(ini, a.getHours()*60+a.getMinutes()), bm=Math.min(fin, +b===+d1?24*60:b.getHours()*60+b.getMinutes());
+      if (bm<=am) return;
+      const pr=profById(f.profesional_id);
+      h+=`<div class="ev fam" data-fam="${esc(f.titulo)}" style="top:${(am-ini)*pxMin}px;height:${Math.max(18,(bm-am)*pxMin-2)}px"><b>${esc(f.titulo)}</b>${f.todo_el_dia?'Todo el día':hm(new Date(f.inicio))+'–'+hm(new Date(f.fin))}${!aProf&&S.prof.length>1&&pr?' · '+esc(pr.nombre):''}</div>`;
+    });
     enRango.filter(t=>ymd(new Date(t.inicio))===ymd(d)).forEach(t=>{
       const a=new Date(t.inicio), b=new Date(t.fin); const top=(a.getHours()*60+a.getMinutes()-ini)*pxMin, alto=Math.max(18,(b-a)/60000*pxMin-2);
       const p=S.pacientes.get(t.paciente_id), pr=profById(t.profesional_id);
@@ -550,7 +583,7 @@ async function pintarAgenda(){
   pintarLateral(tur, hoy, manana);
 }
 $('#a-grid').addEventListener('click', e=>{
-  const ev=e.target.closest('.ev'); if (ev){ const t=S.turnos.find(x=>x.id===ev.dataset.id); if(t) abrirTurno(t); return; }
+  const ev=e.target.closest('.ev'); if (ev){ if (ev.classList.contains('fam')){ toast('Fecha familiar: '+ev.dataset.fam); return; } const t=S.turnos.find(x=>x.id===ev.dataset.id); if(t) abrirTurno(t); return; }
   const s=e.target.closest('.s'); if (!s||s.classList.contains('off')) return;
   const d=s.parentElement.dataset.d, m=+s.dataset.m;
   abrirTurno(null, { fecha:d, hora:pad(Math.floor(m/60))+':'+pad(m%60) });
@@ -611,6 +644,7 @@ async function abrirTurno(t, pre){
   $('#t-dur').value = t?Math.round((new Date(t.fin)-a)/60000):(+S.cfg.duracion||30);
   $('#t-prof').value = t?(t.profesional_id||''):(aProf||(S.prof.find(p=>p.activo)||{}).id||'');
   $('#t-motivo').value = t?t.motivo:''; $('#t-estado').value=t?t.estado:'reservado'; $('#t-notas').value=t?t.notas:'';
+  $('#t-save').dataset.ok=''; $('#t-save').textContent='Guardar';
   $('#t-del').hidden=!t; $('#t-wa').hidden=!t; $('#t-del').dataset.c='';  $('#t-del').textContent='Borrar';
   $('#t-info').textContent = t&&t.recordatorio_enviado ? 'Recordatorio enviado el '+new Date(t.recordatorio_enviado).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})+'.' : '';
   selPac(t ? (S.pacientes.get(t.paciente_id)||null) : (pre.paciente||null)); $('#t-pac-q').value='';
@@ -642,7 +676,7 @@ $('#t-cancel').onclick=()=>$('#d-turno').close();
 $('#t-wa').onclick=()=>{ if(!tEdit) return; abrirWa(tPac, rellenar(S.tpl.recordatorio, tPac, tEdit)); };
 $('#t-del').onclick=async ()=>{
   const b=$('#t-del'); if(!b.dataset.c){ b.dataset.c='1'; b.textContent='Tocá otra vez para borrar'; return; }
-  try{ await q(sb.from('turnos').delete().eq('id', tEdit.id)); $('#d-turno').close(); toast('Turno borrado.'); pintarAgenda(); }catch(e){ toast(errMsg(e), true); }
+  try{ await q(sb.from('turnos').delete().eq('id', tEdit.id)); if (tEdit.profesional_id) gcalSync({ borrado:{ id:tEdit.id, profesional_id:tEdit.profesional_id } }); $('#d-turno').close(); toast('Turno borrado.'); pintarAgenda(); }catch(e){ toast(errMsg(e), true); }
 };
 $('#f-turno').onsubmit = async e=>{
   e.preventDefault();
@@ -650,11 +684,16 @@ $('#f-turno').onsubmit = async e=>{
   const ini=new Date(y,mo-1,d,hh,mi), fin=new Date(ini.getTime()+(+$('#t-dur').value||30)*60000);
   const row={ sede_id:sedeId, paciente_id:tPac?tPac.id:null, profesional_id:$('#t-prof').value||null, inicio:ini.toISOString(), fin:fin.toISOString(), motivo:$('#t-motivo').value.trim(), estado:$('#t-estado').value, notas:$('#t-notas').value.trim() };
   if (!row.paciente_id && !row.motivo){ toast('Elegí un paciente o escribí un motivo (por ejemplo "Bloqueado").', true); return; }
+  const choque = row.estado!=='cancelado' && (S.fam||[]).find(f=>f.profesional_id===row.profesional_id && new Date(f.inicio)<fin && new Date(f.fin)>ini);
+  const firma = choque ? choque.titulo+row.inicio+row.profesional_id : '';
+  if (choque && $('#t-save').dataset.ok!==firma){ $('#t-save').dataset.ok=firma; $('#t-info').innerHTML='<b style="color:var(--bad)">Ese horario está bloqueado por una fecha familiar: '+esc(choque.titulo)+'.</b> Tocá Guardar otra vez si querés dar el turno igual.'; $('#t-save').textContent='Guardar igual'; return; }
   $('#t-save').disabled=true;
   try{
-    if (tEdit) await q(sb.from('turnos').update(row).eq('id', tEdit.id));
-    else await q(sb.from('turnos').insert(row));
-    $('#d-turno').close(); toast(tEdit?'Turno actualizado.':'Turno reservado.');
+    if (tEdit){ await q(sb.from('turnos').update(row).eq('id', tEdit.id));
+      if (tEdit.profesional_id && tEdit.profesional_id!==row.profesional_id) gcalSync({ borrado:{ id:tEdit.id, profesional_id:tEdit.profesional_id } });
+      gcalSync({ turno_id:tEdit.id }); }
+    else { const nuevo = await q(sb.from('turnos').insert(row).select().single()); if (nuevo) gcalSync({ turno_id:nuevo.id }); }
+    $('#d-turno').close(); famCache.t=0; toast(tEdit?'Turno actualizado.':'Turno reservado.');
     if (!tEdit){ aFecha = aModo==='dia' ? startDay(ini) : aFecha; if (aModo==='semana'){ const [a,b]=rango(); if(ini<a||ini>=b) aFecha=startDay(ini); } }
     if (vista!=='agenda') irA('agenda'); else pintarAgenda();
   }catch(err){ toast(errMsg(err), true); }
@@ -789,7 +828,39 @@ async function pintarAjustes(){
     $$('#usr-pend select[data-k=profesional_id]').forEach(x=>x.value='__nuevo');
   }
   $('#ses-info').textContent = `Ingresaste como ${me.email} (${ROLES[perfil.rol]||perfil.rol}).`;
+  pintarGoogle();
 }
+async function pintarGoogle(){
+  const box=$('#gc-list');
+  const profs = perfil.rol==='admin' ? S.prof : S.prof.filter(p=>p.id===perfil.profesional_id);
+  if (!profs.length){ box.innerHTML='<p class="hint">'+(perfil.rol==='secretaria'?'Lo conecta cada profesional desde su usuario.':'Tu usuario no tiene una agenda propia en esta sede.')+'</p>'; return; }
+  let r; try{ r = await gcal({ accion:'estado', profesional_ids:profs.map(p=>p.id) }); }catch(e){ box.innerHTML='<p class="hint">La conexión con Google todavía no está instalada.</p>'; return; }
+  if (!r.configurado){ box.innerHTML='<p class="hint">Falta terminar el alta en Google (lo hace el administrador una sola vez).</p>'; return; }
+  box.innerHTML = profs.map(p=>{ const e=r.estado[p.id]||{conectado:false}; const yo=p.id===perfil.profesional_id;
+    const comp=(e.compartido_con||'').split(',').filter(Boolean);
+    return `<div class="card" data-id="${p.id}" style="padding:10px;display:flex;flex-direction:column;gap:8px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(nombreProf(p))}</b>${e.conectado?'<span class="pill ok">conectado</span>':'<span class="pill">sin conectar</span>'}</div>
+      ${e.conectado ? `<div class="hint">Cuenta de Google: ${esc(e.email)}</div>
+        ${comp.length?'<div class="hint">Lo ven: '+comp.map(m=>`${esc(m)} <button class="link" data-a="unshare" data-email="${esc(m)}">quitar</button>`).join(' · ')+'</div>':''}
+        <div class="row" style="grid-template-columns:1fr auto;align-items:end"><label>Compartir con (email de Google)<input type="email" data-k="email" placeholder="esposa@gmail.com"></label><button class="btn ghost" data-a="share">Compartir</button></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap"><button class="link" data-a="todo">Copiar los próximos turnos ahora</button><button class="link" data-a="off" style="color:var(--bad)">Desconectar</button></div>`
+      : (yo ? `<button class="btn" data-a="on">Conectar mi Google Calendar</button>` : `<p class="hint">Lo conecta ${esc(p.nombre)} desde su usuario.</p>`)}
+    </div>`; }).join('');
+}
+$('#gc-list').addEventListener('click', async e=>{
+  const a=e.target.dataset.a; if(!a) return; const card=e.target.closest('.card[data-id]'); const pid=card.dataset.id;
+  e.target.disabled=true;
+  try{
+    if (a==='on'){ const r=await gcal({ accion:'conectar', profesional_id:pid }); location.href=r.url; return; }
+    if (a==='share'){ const em=card.querySelector('[data-k=email]').value.trim(); if(!em){ toast('Escribí el email.', true); e.target.disabled=false; return; }
+      await gcal({ accion:'compartir', profesional_id:pid, email:em }); toast('Listo: le llega un mail de Google para agregar los calendarios.'); }
+    if (a==='unshare'){ await gcal({ accion:'dejar_de_compartir', profesional_id:pid, email:e.target.dataset.email }); toast('Ya no lo ve.'); }
+    if (a==='todo'){ const r=await gcal({ accion:'sync', todo:true, profesional_id:pid }); toast((r.copiados||0)+' turnos copiados a Google Calendar.'); }
+    if (a==='off'){ if(!e.target.dataset.c){ e.target.dataset.c='1'; e.target.textContent='Tocá otra vez para desconectar'; e.target.disabled=false; return; }
+      await gcal({ accion:'desconectar', profesional_id:pid }); toast('Google Calendar desconectado.'); }
+    pintarGoogle();
+  }catch(err){ toast(errMsg(err), true); e.target.disabled=false; }
+});
 function leerUsuario(card){
   const rol = card.querySelector('[data-k=rol]').value;
   const sedes = rol==='admin' ? S.sedes.map(x=>x.id) : [...card.querySelectorAll('input[data-sede]:checked')].map(i=>i.dataset.sede);
@@ -843,6 +914,9 @@ async function iniciar(){
   if (!conn){ show('#v-setup'); return; }
   try{ await entrar(); }catch(e){ toast(errMsg(e), true); show('#v-login'); }
 }
+(()=>{ const u=new URL(location.href); const g=u.searchParams.get('gcal'); if(!g) return;
+  const msg={ok:'Google Calendar conectado. Ya se copiaron tus próximos turnos.', cancelado:'No se conectó Google Calendar.', error:'No se pudo conectar Google Calendar: '+(u.searchParams.get('msg')||'')}[g]||'';
+  setTimeout(()=>toast(msg, g!=='ok'), 800); LS.set('rn_tab','ajustes'); u.searchParams.delete('gcal'); u.searchParams.delete('msg'); history.replaceState(null,'',u.pathname+u.search); })();
 if (conn) conectar();
 iniciar();
 setInterval(()=>{ if(!$('#v-app').hidden && vista==='agenda' && !document.querySelector('dialog[open]')) pintarAgenda().catch(()=>{}); }, 60000);

@@ -311,3 +311,28 @@ drop policy if exists config_admin on public.config;
 create policy config_admin on public.config for all to authenticated using (public.es_admin()) with check (public.es_admin());
 
 grant select, insert, update, delete on all tables in schema public to authenticated;
+
+-- =====================================================================
+-- Etapa 1c · Google Calendar
+-- Las claves de Google quedan en tablas que solo ve el servidor.
+-- =====================================================================
+create table if not exists public.google_cuentas (
+  profesional_id uuid primary key references public.profesionales(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  email text not null default '',
+  refresh_token text not null,
+  cal_turnos text,
+  cal_familia text,
+  compartido_con text not null default '',
+  actualizado timestamptz not null default now()
+);
+create table if not exists public.google_estado (
+  state text primary key,
+  user_id uuid not null,
+  profesional_id uuid not null,
+  creado timestamptz not null default now()
+);
+alter table public.google_cuentas enable row level security;
+alter table public.google_estado enable row level security;
+revoke all on public.google_cuentas from anon, authenticated;
+revoke all on public.google_estado from anon, authenticated;

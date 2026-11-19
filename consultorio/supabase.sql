@@ -343,3 +343,33 @@ grant all on all tables in schema public to service_role;
 grant all on all sequences in schema public to service_role;
 grant execute on all functions in schema public to service_role;
 alter default privileges in schema public grant all on tables to service_role;
+-- Etapa 2 · Pendientes de la secretaria (turnos por dar y tareas)
+create table if not exists public.tareas (
+  id uuid primary key default gen_random_uuid(),
+  sede_id text not null references public.sedes(id),
+  tipo text not null default 'tarea' check (tipo in ('tarea','turno')),
+  titulo text not null default '',
+  detalle text not null default '',
+  paciente_id uuid references public.pacientes(id) on delete cascade,
+  profesional_id uuid references public.profesionales(id) on delete set null,
+  turno_id uuid references public.turnos(id) on delete set null,
+  vence date,
+  asignada_a uuid references auth.users(id) on delete set null,
+  hecho boolean not null default false,
+  hecho_en timestamptz,
+  hecho_por uuid,
+  creado_por uuid default auth.uid(),
+  creado timestamptz not null default now(),
+  actualizado timestamptz not null default now()
+);
+create index if not exists tareas_sede on public.tareas (sede_id, hecho, vence);
+create index if not exists tareas_turno on public.tareas (turno_id);
+alter table public.tareas enable row level security;
+drop policy if exists por_sede on public.tareas;
+create policy por_sede on public.tareas for all to authenticated
+  using (public.puede_sede(sede_id)) with check (public.puede_sede(sede_id));
+grant select, insert, update, delete on public.tareas to authenticated;
+grant all on public.tareas to service_role;
+drop trigger if exists tareas_actualizado on public.tareas;
+create trigger tareas_actualizado before update on public.tareas for each row execute function public.marcar_actualizado();
+select count(*) as tareas from public.tareas;

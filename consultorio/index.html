@@ -81,6 +81,11 @@ main{padding:14px 16px calc(40px + env(safe-area-inset-bottom,0px));max-width:14
 .item:first-of-type{border-top:0}
 .item .t{min-width:0}.item .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item .t span{font-size:12px;color:var(--mut)}
+.badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:999px;background:var(--bad);color:#fff;font:600 11px/18px var(--body,inherit);text-align:center;margin-left:2px}
+.pcols{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start}
+@media(max-width:1000px){.pcols{grid-template-columns:1fr}}
+.item .acts{display:flex;gap:6px;flex-shrink:0}
+.item.done .t b{text-decoration:line-through;color:var(--mut)}
 .pill{font-size:11px;border-radius:999px;padding:2px 8px;background:#efeee8;color:var(--mut);white-space:nowrap}
 .pill.ok{background:#e9f6ef;color:var(--ok)}.pill.bad{background:#fbe9e7;color:var(--bad)}.pill.acc{background:var(--soft);color:#7a6100}
 /* listas */
@@ -107,7 +112,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
 .mobile-only{display:none}
 @media(max-width:700px){
   header.top{gap:8px}.logo small{display:none}
-  nav.tabs{order:3;width:100%;justify-content:space-between}nav.tabs button{flex:1;padding:8px 4px}
+  nav.tabs{order:3;width:100%;justify-content:space-between}nav.tabs button{flex:1;padding:8px 2px;font-size:13px;min-width:0}
   .row3{grid-template-columns:1fr 1fr}.agbar .ttl{min-width:0;font-size:15px}
   .desk-only{display:none}.mobile-only{display:initial}
 }
@@ -161,6 +166,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
     <nav class="tabs" role="tablist">
       <button role="tab" data-v="agenda" aria-selected="true">Agenda</button>
       <button role="tab" data-v="pacientes" aria-selected="false">Pacientes</button>
+      <button role="tab" data-v="pendientes" aria-selected="false">Pendientes <span class="badge" id="pend-n" hidden></span></button>
       <button role="tab" data-v="lab" aria-selected="false">Laboratorio</button>
       <button role="tab" data-v="ajustes" aria-selected="false">Ajustes</button>
     </nav>
@@ -180,10 +186,26 @@ dialog form{display:flex;flex-direction:column;gap:12px}
       <div class="aglay">
         <div class="grid" id="a-grid"></div>
         <aside class="side">
+          <div class="card" id="pend-side"><h3>Pendientes</h3><div id="ps-list" style="margin-top:6px"></div></div>
           <div class="card"><h3 id="r-ttl">Recordatorios para mañana</h3><div id="r-list" style="margin-top:6px"></div></div>
           <div class="card"><h3>Cumpleaños de hoy</h3><div id="c-list" style="margin-top:6px"></div></div>
           <div class="card"><h3>Resumen del día</h3><div id="d-res" style="margin-top:6px"></div></div>
         </aside>
+      </div>
+    </section>
+
+    <!-- PENDIENTES -->
+    <section id="v-pendientes" hidden>
+      <div class="toolbar">
+        <div class="seg" id="pd-f"><button data-f="mias" class="on">Todas</button><button data-f="yo">Asignadas a mí</button><button data-f="hechas">Hechas</button></div>
+        <span style="flex:1"></span>
+        <button class="btn ghost" id="pd-nturno">+ Turno por dar</button>
+        <button class="btn" id="pd-ntarea">+ Tarea</button>
+      </div>
+      <div class="pcols">
+        <div class="card"><h3>Turnos por dar</h3><p class="hint">Pacientes que esperan que les des turno.</p><div id="pd-turnos" style="margin-top:6px"></div></div>
+        <div class="card"><h3>Para reprogramar</h3><p class="hint">Faltaron o cancelaron en los últimos 30 días y no tienen turno nuevo.</p><div id="pd-reprog" style="margin-top:6px"></div></div>
+        <div class="card"><h3>Tareas</h3><p class="hint">Cosas para hacer: llamar, pedir, cobrar, avisar.</p><div id="pd-tareas" style="margin-top:6px"></div></div>
       </div>
     </section>
 
@@ -317,6 +339,15 @@ dialog form{display:flex;flex-direction:column;gap:12px}
 <datalist id="dl-origen"><option>Instagram</option><option>Recomendación</option><option>Google</option><option>Paciente anterior</option><option>Otro profesional</option></datalist>
 
 <!-- DIALOGO LAB -->
+<dialog id="d-tarea"><form id="f-tarea">
+  <h2 id="ta-ttl">Tarea</h2>
+  <div class="acwrap" id="ta-pac-w"><label><span id="ta-pac-lab">Paciente (opcional)</span><input id="ta-pac-q" placeholder="Buscar paciente…" autocomplete="off"></label><div class="acl" id="ta-pac-l" hidden></div></div>
+  <div class="sel" id="ta-pac-sel" hidden><span id="ta-pac-n"></span><button type="button" class="link" id="ta-pac-x">Cambiar</button></div>
+  <label><span id="ta-tit-l">Qué hay que hacer</span><input name="titulo" autocomplete="off"></label>
+  <label>Detalle<textarea name="detalle" rows="2"></textarea></label>
+  <div class="row"><label>Para cuándo<input name="vence" type="date"></label><label>Asignada a<select name="asignada_a"></select></label></div>
+  <div class="dacts"><span class="l"><button type="button" class="btn danger" id="ta-del">Borrar</button></span><button type="button" class="btn ghost" id="ta-cancel">Cerrar</button><button class="btn">Guardar</button></div>
+</form></dialog>
 <dialog id="d-lab"><form id="f-lab">
   <h2>Trabajo de laboratorio</h2>
   <div class="row"><label>Paciente<input name="paciente" required autocomplete="off"></label><label>Odontólogo<input name="cliente" list="dl-cli" autocomplete="off"></label></div>
@@ -477,10 +508,11 @@ $$('nav.tabs button').forEach(b => b.onclick = () => irA(b.dataset.v));
 async function irA(v){
   vista=v; LS.set('rn_tab',v);
   $$('nav.tabs button').forEach(b=>b.setAttribute('aria-selected', b.dataset.v===v));
-  ['agenda','pacientes','lab','ajustes'].forEach(x=>$('#v-'+x).hidden = x!==v);
+  ['agenda','pacientes','pendientes','lab','ajustes'].forEach(x=>$('#v-'+x).hidden = x!==v);
   try{
     if (v==='agenda') await pintarAgenda();
     if (v==='pacientes') { if(!S.pacientes.size) await cargarPacientes(); pintarPacientes(); }
+    if (v==='pendientes') await pintarPend();
     if (v==='lab') await pintarLab();
     if (v==='ajustes') await pintarAjustes();
   }catch(e){ toast(errMsg(e), true); }
@@ -610,7 +642,7 @@ function pintarLateral(tur, hoy, manana){
   const th = tur.filter(t=>ymd(new Date(t.inicio))===ymd(hoy) && t.estado!=='cancelado');
   const cnt = k => th.filter(t=>t.estado===k).length;
   $('#d-res').innerHTML = `<div class="item"><div class="t"><b>${th.length} ${th.length===1?'turno':'turnos'} hoy</b><span>${cnt('confirmado')} confirmados · ${cnt('atendido')} atendidos · ${cnt('ausente')} ausentes</span></div></div>`;
-  pintarCumples();
+  pintarCumples(); pintarPendSide().catch(()=>{});
 }
 $('#r-list').addEventListener('click', async e=>{
   if (e.target.dataset.a!=='rec') return;
@@ -701,12 +733,161 @@ $('#f-turno').onsubmit = async e=>{
     if (tEdit){ await q(sb.from('turnos').update(row).eq('id', tEdit.id));
       if (tEdit.profesional_id && tEdit.profesional_id!==row.profesional_id) gcalSync({ borrado:{ id:tEdit.id, profesional_id:tEdit.profesional_id } });
       gcalSync({ turno_id:tEdit.id }); }
-    else { const nuevo = await q(sb.from('turnos').insert(row).select().single()); if (nuevo) gcalSync({ turno_id:nuevo.id }); }
+    else { const nuevo = await q(sb.from('turnos').insert(row).select().single()); if (nuevo) gcalSync({ turno_id:nuevo.id }); await cerrarPendienteTrasTurno(nuevo); }
     $('#d-turno').close(); famCache.t=0; toast(tEdit?'Turno actualizado.':'Turno reservado.');
     if (!tEdit){ aFecha = aModo==='dia' ? startDay(ini) : aFecha; if (aModo==='semana'){ const [a,b]=rango(); if(ini<a||ini>=b) aFecha=startDay(ini); } }
     if (vista!=='agenda') irA('agenda'); else pintarAgenda();
   }catch(err){ toast(errMsg(err), true); }
   $('#t-save').disabled=false;
+};
+
+
+/* ---------- PENDIENTES (secretaria) ---------- */
+let pdF='mias', taEdit=null, taTipo='tarea', taPac=null, tareaDarTurno=null;
+const hoyYmd = () => ymd(new Date());
+const fCorta = d => d ? d.slice(8,10)+'/'+d.slice(5,7) : '';
+async function cargarTareas(hechas){
+  let qq = sb.from('tareas').select('*').eq('sede_id', sedeId);
+  qq = hechas ? qq.eq('hecho', true).order('hecho_en',{ascending:false}).limit(100) : qq.eq('hecho', false).order('vence',{ascending:true, nullsFirst:false}).order('creado');
+  return await q(qq);
+}
+async function cargarReprog(){
+  const desde = addDays(startDay(new Date()), -30).toISOString(), ahora = new Date().toISOString();
+  const [malos, futuros, vistos] = await Promise.all([
+    q(sb.from('turnos').select('id,paciente_id,profesional_id,inicio,motivo,estado').eq('sede_id', sedeId).in('estado',['ausente','cancelado']).gte('inicio', desde).not('paciente_id','is',null).order('inicio',{ascending:false})),
+    q(sb.from('turnos').select('paciente_id').eq('sede_id', sedeId).gte('inicio', ahora).in('estado',['reservado','confirmado'])),
+    q(sb.from('tareas').select('turno_id').eq('sede_id', sedeId).not('turno_id','is',null))
+  ]);
+  const conFuturo = new Set(futuros.map(t=>t.paciente_id)), visto = new Set(vistos.map(t=>t.turno_id)), yaPac = new Set();
+  return malos.filter(t=>{ if (conFuturo.has(t.paciente_id) || visto.has(t.id) || yaPac.has(t.paciente_id)) return false; yaPac.add(t.paciente_id); return true; });
+}
+const quien = uid => { const u=(S.personal||[]).find(x=>x.user_id===uid); return u ? (u.nombre||u.email) : ''; };
+function venceTxt(t){ if(!t.vence) return ''; const h=hoyYmd(); return t.vence<h ? `<span class="pill bad">venció ${fCorta(t.vence)}</span>` : (t.vence===h ? '<span class="pill acc">hoy</span>' : `<span class="pill">${fCorta(t.vence)}</span>`); }
+function itemTarea(t){
+  const p = t.paciente_id ? S.pacientes.get(t.paciente_id) : null;
+  const tit = t.tipo==='turno' ? (p?nombrePac(p):'Paciente') : t.titulo;
+  const sub = [t.tipo==='turno'?t.titulo:(p?nombrePac(p):''), t.detalle, t.asignada_a?'→ '+quien(t.asignada_a):''].filter(Boolean).join(' · ');
+  const acts = t.hecho ? `<button class="btn ghost" data-a="reabrir" style="padding:6px 10px">Reabrir</button>`
+    : (t.tipo==='turno' ? `${p&&p.telefono?'<button class="btn wa" data-a="wa" style="padding:6px 10px">WhatsApp</button>':''}<button class="btn" data-a="dar" style="padding:6px 10px">Dar turno</button>`
+                        : `<button class="btn" data-a="hecho" style="padding:6px 10px">Hecho</button>`);
+  return `<div class="item${t.hecho?' done':''}" data-id="${t.id}"><div class="t" data-a="editar" style="cursor:pointer"><b>${esc(tit)}</b><span>${esc([sub, t.hecho&&t.hecho_en?'hecha '+new Date(t.hecho_en).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):''].filter(Boolean).join(' · '))}</span></div>${t.hecho?'':venceTxt(t)}<div class="acts">${acts}</div></div>`;
+}
+async function pintarPend(){
+  if (!S.pacientes.size) await cargarPacientes();
+  const hechas = pdF==='hechas';
+  let l = await cargarTareas(hechas);
+  if (pdF==='yo') l = l.filter(t=>t.asignada_a===me.id);
+  S.tareas = l;
+  const tur = l.filter(t=>t.tipo==='turno'), tar = l.filter(t=>t.tipo==='tarea');
+  $('#pd-turnos').innerHTML = tur.length ? tur.map(itemTarea).join('') : `<p class="hint">${hechas?'Nada todavía.':'No hay pacientes esperando turno.'}</p>`;
+  $('#pd-tareas').innerHTML = tar.length ? tar.map(itemTarea).join('') : `<p class="hint">${hechas?'Nada todavía.':'No hay tareas pendientes.'}</p>`;
+  const rw = $('#pd-reprog').closest('.card'); rw.hidden = hechas;
+  if (!hechas){
+    S.reprog = await cargarReprog();
+    $('#pd-reprog').innerHTML = S.reprog.length ? S.reprog.map(t=>{ const p=S.pacientes.get(t.paciente_id); const d=new Date(t.inicio);
+      return `<div class="item" data-turno="${t.id}"><div class="t"><b>${esc(nombrePac(p))}</b><span>${t.estado==='ausente'?'Faltó':'Canceló'} el ${d.getDate()}/${d.getMonth()+1}${t.motivo?' · '+esc(t.motivo):''}</span></div><div class="acts">${p&&p.telefono?'<button class="btn wa" data-a="wa" style="padding:6px 10px">WhatsApp</button>':''}<button class="btn" data-a="dar" style="padding:6px 10px">Dar turno</button><button class="btn ghost" data-a="desc" style="padding:6px 10px" title="Quitar de la lista">✕</button></div></div>`; }).join('')
+      : '<p class="hint">Nadie para reprogramar.</p>';
+  }
+  contarPend();
+}
+async function contarPend(){
+  try{
+    const { count } = await sb.from('tareas').select('id', { count:'exact', head:true }).eq('sede_id', sedeId).eq('hecho', false).or('vence.is.null,vence.lte.'+hoyYmd());
+    const b=$('#pend-n'); b.textContent=count||''; b.hidden=!count;
+  }catch(e){}
+}
+async function pintarPendSide(){
+  if (!sb) return;
+  const l = await cargarTareas(false), h = hoyYmd();
+  const hoy = l.filter(t=>!t.vence || t.vence<=h);
+  const b=$('#pend-n'); b.textContent=hoy.length||''; b.hidden=!hoy.length;
+  const tur = hoy.filter(t=>t.tipo==='turno').length, tar = hoy.length-tur, venc = hoy.filter(t=>t.vence && t.vence<h).length;
+  $('#ps-list').innerHTML = hoy.length
+    ? `<div class="item"><div class="t"><b>${tur} ${tur===1?'turno por dar':'turnos por dar'} · ${tar} ${tar===1?'tarea':'tareas'}</b><span>${venc?venc+' vencidas · ':''}${hoy.slice(0,3).map(t=>esc(t.tipo==='turno'?nombrePac(S.pacientes.get(t.paciente_id)):t.titulo)).join(', ')}${hoy.length>3?'…':''}</span></div><button class="btn" data-a="ver" style="padding:6px 10px">Ver</button></div>`
+    : '<div class="item"><div class="t"><span>Nada pendiente para hoy.</span></div><button class="btn ghost" data-a="ver" style="padding:6px 10px">Ver</button></div>';
+}
+$('#ps-list').addEventListener('click', e=>{ if (e.target.dataset.a==='ver') irA('pendientes'); });
+$('#pd-f').addEventListener('click', e=>{ if(!e.target.dataset.f) return; pdF=e.target.dataset.f; $$('#pd-f button').forEach(b=>b.classList.toggle('on',b===e.target)); pintarPend().catch(err=>toast(errMsg(err),true)); });
+$('#pd-nturno').onclick=()=>abrirTarea(null,'turno');
+$('#pd-ntarea').onclick=()=>abrirTarea(null,'tarea');
+async function marcar(t, hecho){
+  await q(sb.from('tareas').update({ hecho, hecho_en: hecho?new Date().toISOString():null, hecho_por: hecho?me.id:null }).eq('id', t.id));
+}
+async function clickTarea(e){
+  const it=e.target.closest('.item[data-id]'); if(!it) return;
+  const a=e.target.closest('[data-a]'); if(!a) return;
+  const t=(S.tareas||[]).find(x=>x.id===it.dataset.id); if(!t) return;
+  const p=t.paciente_id?S.pacientes.get(t.paciente_id):null;
+  try{
+    if (a.dataset.a==='editar') return abrirTarea(t, t.tipo);
+    if (a.dataset.a==='hecho'){ await marcar(t,true); toast('Tarea hecha.'); }
+    if (a.dataset.a==='reabrir'){ await marcar(t,false); toast('Volvió a pendientes.'); }
+    if (a.dataset.a==='wa'){ abrirWa(p, rellenar(S.tpl.control||'Hola {nombre}! Te escribimos de RN Odontología para darte un turno. ¿Qué día y horario te queda cómodo?', p, null)); return; }
+    if (a.dataset.a==='dar'){ tareaDarTurno={ tarea:t.id }; abrirTurno(null, { paciente:p, fecha:hoyYmd() }); return; }
+    pintarPend();
+  }catch(err){ toast(errMsg(err), true); }
+}
+$('#pd-turnos').addEventListener('click', clickTarea);
+$('#pd-tareas').addEventListener('click', clickTarea);
+$('#pd-reprog').addEventListener('click', async e=>{
+  const it=e.target.closest('.item[data-turno]'), a=e.target.closest('[data-a]'); if(!it||!a) return;
+  const t=(S.reprog||[]).find(x=>x.id===it.dataset.turno); if(!t) return; const p=S.pacientes.get(t.paciente_id);
+  try{
+    if (a.dataset.a==='wa'){ abrirWa(p, rellenar('Hola {nombre}! Te escribimos de RN Odontología: vimos que no pudiste venir a tu turno. ¿Te damos uno nuevo? Decinos qué día te queda cómodo.', p, null)); return; }
+    if (a.dataset.a==='dar'){ tareaDarTurno={ turno:t }; abrirTurno(null, { paciente:p, fecha:hoyYmd() }); return; }
+    if (a.dataset.a==='desc'){ await q(sb.from('tareas').insert({ sede_id:sedeId, tipo:'turno', titulo:'Reprogramar (descartado)', paciente_id:t.paciente_id, turno_id:t.id, hecho:true, hecho_en:new Date().toISOString(), hecho_por:me.id })); toast('Quitado de la lista.'); pintarPend(); }
+  }catch(err){ toast(errMsg(err), true); }
+});
+// cuando se reserva el turno desde Pendientes, se cierra el pendiente
+async function cerrarPendienteTrasTurno(nuevo){
+  const x=tareaDarTurno; tareaDarTurno=null; if(!x||!nuevo) return;
+  try{
+    if (x.tarea) await q(sb.from('tareas').update({ hecho:true, hecho_en:new Date().toISOString(), hecho_por:me.id, turno_id:nuevo.id }).eq('id', x.tarea));
+    if (x.turno) await q(sb.from('tareas').insert({ sede_id:sedeId, tipo:'turno', titulo:'Reprogramado', paciente_id:x.turno.paciente_id, turno_id:x.turno.id, hecho:true, hecho_en:new Date().toISOString(), hecho_por:me.id }));
+  }catch(e){}
+}
+$('#d-turno').addEventListener('close', ()=>{ setTimeout(()=>{ if (!$('#d-turno').open && !$('#d-pac').open) tareaDarTurno=null; }, 0); });
+function selTaPac(p){ taPac=p; $('#ta-pac-w').hidden=!!p; $('#ta-pac-sel').hidden=!p; if(p) $('#ta-pac-n').innerHTML=`<b>${esc(nombrePac(p))}</b> ${p.telefono?'<small class="hint">'+esc(p.telefono)+'</small>':''}`; }
+$('#ta-pac-x').onclick=()=>{ selTaPac(null); $('#ta-pac-q').value=''; $('#ta-pac-q').focus(); };
+$('#ta-pac-q').addEventListener('input', ()=>{
+  const v=$('#ta-pac-q').value.trim(), l=$('#ta-pac-l'); if(!v){ l.hidden=true; return; }
+  const r=buscarPac(v,8);
+  l.innerHTML = r.map(p=>`<div data-id="${p.id}">${esc(nombrePac(p))}<small>${esc(p.telefono||p.dni||'')}</small></div>`).join('') + `<div data-new="1"><b>+ Paciente nuevo:</b> ${esc(v)}</div>`; l.hidden=false;
+});
+$('#ta-pac-l').addEventListener('mousedown', e=>{
+  const d=e.target.closest('div[data-id],div[data-new]'); if(!d) return; e.preventDefault(); $('#ta-pac-l').hidden=true;
+  if (d.dataset.id){ selTaPac(S.pacientes.get(d.dataset.id)); return; }
+  const partes=$('#ta-pac-q').value.trim().split(/\s+/);
+  $('#d-tarea').close();
+  abrirPaciente(null, { nombre:partes.shift()||'', apellido:partes.join(' ') }, p=>{ selTaPac(p); $('#d-tarea').showModal(); });
+});
+$('#ta-pac-q').addEventListener('blur', ()=>setTimeout(()=>$('#ta-pac-l').hidden=true,150));
+async function abrirTarea(t, tipo){
+  if (!S.pacientes.size) { try{ await cargarPacientes(); }catch(e){} }
+  taEdit=t; taTipo=tipo||'tarea'; const f=$('#f-tarea'); f.reset();
+  $('#ta-ttl').textContent = taTipo==='turno' ? (t?'Turno por dar':'Nuevo turno por dar') : (t?'Tarea':'Nueva tarea');
+  $('#ta-tit-l').textContent = taTipo==='turno' ? 'Para qué (motivo)' : 'Qué hay que hacer';
+  $('#ta-pac-lab').textContent = taTipo==='turno' ? 'Paciente' : 'Paciente (opcional)';
+  f.titulo.placeholder = taTipo==='turno' ? 'Ej: control, limpieza, segunda sesión' : 'Ej: llamar a la obra social, pedir materiales';
+  f.asignada_a.innerHTML = '<option value="">Cualquiera</option>' + (S.personal||[]).filter(u=>u.activo).map(u=>`<option value="${u.user_id}">${esc(u.nombre||u.email)}</option>`).join('');
+  if (t){ f.titulo.value=t.titulo||''; f.detalle.value=t.detalle||''; f.vence.value=t.vence||''; f.asignada_a.value=t.asignada_a||''; }
+  selTaPac(t&&t.paciente_id ? (S.pacientes.get(t.paciente_id)||null) : null); $('#ta-pac-q').value='';
+  $('#ta-del').hidden=!t; $('#ta-del').dataset.c=''; $('#ta-del').textContent='Borrar';
+  $('#d-tarea').showModal();
+  setTimeout(()=>(taTipo==='turno'&&!taPac?$('#ta-pac-q'):f.titulo).focus(),50);
+}
+$('#ta-cancel').onclick=()=>$('#d-tarea').close();
+$('#ta-del').onclick=async()=>{ const b=$('#ta-del'); if(!b.dataset.c){ b.dataset.c='1'; b.textContent='Tocá otra vez para borrar'; return; }
+  try{ await q(sb.from('tareas').delete().eq('id', taEdit.id)); $('#d-tarea').close(); toast('Borrada.'); pintarPend(); }catch(e){ toast(errMsg(e), true); } };
+$('#f-tarea').onsubmit=async e=>{
+  e.preventDefault(); const f=e.target;
+  const row={ sede_id:sedeId, tipo:taTipo, titulo:f.titulo.value.trim(), detalle:f.detalle.value.trim(), vence:f.vence.value||null, asignada_a:f.asignada_a.value||null, paciente_id:taPac?taPac.id:null };
+  if (taTipo==='turno' && !row.paciente_id){ toast('Elegí el paciente.', true); return; }
+  if (taTipo==='tarea' && !row.titulo){ toast('Escribí qué hay que hacer.', true); return; }
+  try{
+    if (taEdit) await q(sb.from('tareas').update(row).eq('id', taEdit.id)); else await q(sb.from('tareas').insert(row));
+    $('#d-tarea').close(); toast('Guardado.'); if (vista==='pendientes') pintarPend(); else pintarPendSide().catch(()=>{});
+  }catch(err){ toast(errMsg(err), true); }
 };
 
 /* ---------- PACIENTES ---------- */

@@ -72,6 +72,10 @@ main{padding:14px 16px calc(40px + env(safe-area-inset-bottom,0px));max-width:14
 .dcol .s.off{background:repeating-linear-gradient(45deg,#fafaf7,#fafaf7 4px,#f3f2ec 4px,#f3f2ec 8px);cursor:default}
 .ev{position:absolute;left:3px;right:3px;border-radius:7px;padding:3px 6px;font-size:12px;line-height:1.25;overflow:hidden;cursor:pointer;border-left:4px solid var(--c,#F5C400);background:#fffbe6;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .ev b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbw{display:inline-block;font-size:10px;font-weight:700;border-radius:4px;padding:0 4px;margin-right:3px;vertical-align:1px}
+.lbw.falta,.lbw.revisar{background:var(--bad);color:#fff}.lbw.ok{background:var(--ok);color:#fff}
+.labnote{border-radius:9px;padding:8px 10px;font-size:13px;margin:0}
+.labnote.falta,.labnote.revisar{background:#fbe9e7;color:#8a2a1c}.labnote.ok{background:#e9f6ef;color:#1f6b45}
 .ev.confirmado{background:#e9f6ef}.ev.atendido{background:#eef0f3;color:#555}.ev.ausente{background:#fbe9e7}.ev.cancelado{opacity:.45;text-decoration:line-through}
 .ev.fam{background:repeating-linear-gradient(45deg,#f1f1ee,#f1f1ee 6px,#e8e8e3 6px,#e8e8e3 12px);border-left-color:#8a8a85;color:#555;z-index:1;box-shadow:none}
 .ev:not(.fam){z-index:2}
@@ -311,6 +315,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
     <option value="reservado">Reservado</option><option value="confirmado">Confirmado</option><option value="atendido">Atendido</option><option value="ausente">Ausente</option><option value="cancelado">Cancelado</option>
   </select></label>
   <label>Notas<textarea id="t-notas" rows="2"></textarea></label>
+  <p class="labnote" id="t-lab" hidden></p>
   <p class="hint" id="t-info"></p>
   <div class="dacts">
     <span class="l"><button type="button" class="btn wa" id="t-wa">WhatsApp</button><button type="button" class="btn danger" id="t-del">Borrar</button></span>
@@ -318,7 +323,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
     <button class="btn" id="t-save">Guardar</button>
   </div>
 </form></dialog>
-<datalist id="dl-motivos"><option>Consulta</option><option>Control</option><option>Limpieza</option><option>Restauración</option><option>Endodoncia</option><option>Corona</option><option>Carillas</option><option>Blanqueamiento</option><option>Cirugía</option><option>Urgencia</option><option>Ortodoncia</option><option>Escaneo</option></datalist>
+<datalist id="dl-motivos"><option>Consulta</option><option>Control</option><option>Limpieza</option><option>Restauración</option><option>Endodoncia</option><option>Corona</option><option>Carillas</option><option>Blanqueamiento</option><option>Cirugía</option><option>Urgencia</option><option>Ortodoncia</option><option>Escaneo</option><option>Cementado</option><option>Prueba de estructura</option><option>Colocación de placa</option></datalist>
 
 <!-- DIALOGO PACIENTE -->
 <dialog id="d-pac"><form id="f-pac">
@@ -574,6 +579,32 @@ function rango(){
   const d=new Date(aFecha); const dow=(d.getDay()+6)%7; const lun=addDays(d,-dow);
   return [lun, addDays(lun,7)];
 }
+/* ---------- turnos que dependen de un trabajo de laboratorio ---------- */
+const RX_LAB = /cement|coloca|instala|prueba|entrega de|retiro de/i;
+async function cargarLabTar(){
+  try{ S.labTar = await q(sb.from('tareas').select('*').eq('sede_id', sedeId).eq('tipo','lab').eq('hecho', false)); await cargarLabVinc(S.labTar); }
+  catch(e){ S.labTar = []; }
+}
+function labParaTurno(t){
+  if (!t || !t.paciente_id || !RX_LAB.test(t.motivo||'') || ['cancelado','atendido','ausente'].includes(t.estado)) return null;
+  const ls = (S.labTar||[]).filter(x=>x.paciente_id===t.paciente_id);
+  if (!ls.length) return { nivel:'revisar', txt:'Este turno es para colocar un trabajo y no hay ningún pedido de laboratorio cargado para este paciente. Revisá que el trabajo esté en el consultorio antes de confirmar.' };
+  const falta = ls.filter(x=>labEstado(x).k!=='recibido');
+  if (falta.length) return { nivel:'falta', txt:'Todavía no llegó: '+falta.map(x=>(x.titulo||'trabajo')+' ('+(x.laboratorio||'lab')+', '+LABEST[labEstado(x).k].toLowerCase()+(x.vence?', llega '+fCorta(x.vence):'')+')').join('; ')+'. Confirmalo recién cuando esté.' };
+  return { nivel:'ok', txt:'El trabajo ya llegó: '+ls.map(x=>x.titulo||'trabajo').join(', ')+'.' };
+}
+const labBadge = t => { const r=labParaTurno(t); return r ? `<span class="lbw ${r.nivel}" title="${esc(r.txt)}">${r.nivel==='ok'?'LAB ✓':'LAB ?'}</span>` : ''; };
+function pintarLabTurno(){
+  const el=$('#t-lab'); if(!el) return;
+  const r = labParaTurno({ paciente_id: tPac&&tPac.id, motivo: $('#t-motivo').value, estado: $('#t-estado').value });
+  el.hidden = !r; if (!r) return;
+  el.className = 'labnote '+r.nivel;
+  el.innerHTML = esc(r.txt) + (r.nivel==='revisar' ? ' <button type="button" class="link" id="t-lab-new">Cargar pedido de laboratorio</button>' : '');
+}
+$('#t-motivo').addEventListener('input', pintarLabTurno);
+$('#t-estado').addEventListener('change', ()=>{ pintarLabTurno(); const r=labParaTurno({ paciente_id: tPac&&tPac.id, motivo: $('#t-motivo').value, estado: $('#t-estado').value }); if (r && r.nivel!=='ok' && $('#t-estado').value==='confirmado') toast('Ojo: antes de confirmar, revisá que el trabajo esté.', true); });
+$('#t-lab').addEventListener('click', e=>{ if (e.target.id!=='t-lab-new' || !tPac) return; const p=tPac; $('#d-turno').close(); abrirTarea(null,'lab').then(()=>{ selTaPac(p); $('#f-tarea').titulo.value=($('#t-motivo').value||'').replace(RX_LAB,'').replace(/^\s*(de|del|la|el)\s+/i,'').trim(); }); });
+
 async function pintarAgenda(){
   $$('.agbar [data-m]').forEach(b=>b.classList.toggle('on', b.dataset.m===aModo));
   const [desde,hasta]=rango();
@@ -583,6 +614,7 @@ async function pintarAgenda(){
   const faltan = [...new Set(tur.map(t=>t.paciente_id).filter(id=>id && !S.pacientes.has(id)))];
   if (faltan.length){ const ps = await q(sb.from('pacientes').select('*').in('id', faltan)); ps.forEach(p=>S.pacientes.set(p.id,p)); }
   S.turnos = tur;
+  await cargarLabTar();
   const famIds = aProf ? [aProf] : S.prof.filter(p=>p.activo).map(p=>p.id);
   S.fam = await cargarFamilia(desde, hasta, famIds);
   const enRango = tur.filter(t=>new Date(t.inicio)>=desde && new Date(t.inicio)<hasta && (!aProf || t.profesional_id===aProf));
@@ -619,7 +651,7 @@ async function pintarAgenda(){
     enRango.filter(t=>ymd(new Date(t.inicio))===ymd(d)).forEach(t=>{
       const a=new Date(t.inicio), b=new Date(t.fin); const top=(a.getHours()*60+a.getMinutes()-ini)*pxMin, alto=Math.max(18,(b-a)/60000*pxMin-2);
       const p=S.pacientes.get(t.paciente_id), pr=profById(t.profesional_id);
-      h+=`<div class="ev ${t.estado}" data-id="${t.id}" style="top:${top}px;height:${alto}px;--c:${esc(pr?pr.color:'#F5C400')}"><b>${hm(a)} ${esc(nombrePac(p))}</b>${esc(t.motivo||'')}${!aProf&&S.prof.length>1&&pr?' · '+esc(pr.nombre):''}</div>`;
+      h+=`<div class="ev ${t.estado}" data-id="${t.id}" style="top:${top}px;height:${alto}px;--c:${esc(pr?pr.color:'#F5C400')}"><b>${labBadge(t)}${hm(a)} ${esc(nombrePac(p))}</b>${esc(t.motivo||'')}${!aProf&&S.prof.length>1&&pr?' · '+esc(pr.nombre):''}</div>`;
     });
     if (ymd(d)===ymd(new Date())){ const n=new Date(); const mm=n.getHours()*60+n.getMinutes(); if(mm>=ini&&mm<=fin) h+=`<div class="nowline" style="top:${(mm-ini)*pxMin}px"></div>`; }
     h+=`</div>`;
@@ -640,7 +672,8 @@ function pintarLateral(tur, hoy, manana){
   const rec = tur.filter(t=>ymd(new Date(t.inicio))===ymd(dia) && ['reservado','confirmado'].includes(t.estado));
   $('#r-ttl').textContent = 'Recordatorios para '+(ymd(dia)===ymd(manana)?'mañana':DIAS[dia.getDay()]+' '+dia.getDate());
   $('#r-list').innerHTML = rec.length ? rec.map(t=>{ const p=S.pacientes.get(t.paciente_id);
-    const st = t.estado==='confirmado'?'<span class="pill ok">confirmado</span>':(t.recordatorio_enviado?'<span class="pill acc">enviado</span>':'');
+    const lr = labParaTurno(t);
+    const st = (lr&&lr.nivel!=='ok'?`<span class="pill bad" title="${esc(lr.txt)}">¿llegó el trabajo?</span>`:'') + (t.estado==='confirmado'?'<span class="pill ok">confirmado</span>':(t.recordatorio_enviado?'<span class="pill acc">enviado</span>':''));
     return `<div class="item" data-id="${t.id}"><div class="t"><b>${hm(new Date(t.inicio))} ${esc(nombrePac(p))}</b><span>${esc(t.motivo||'')}</span></div>${st}<button class="btn wa" data-a="rec" style="padding:6px 10px">Enviar</button></div>`; }).join('')
     : '<p class="hint">No hay turnos para recordar.</p>';
   // resumen
@@ -652,6 +685,8 @@ function pintarLateral(tur, hoy, manana){
 $('#r-list').addEventListener('click', async e=>{
   if (e.target.dataset.a!=='rec') return;
   const t=S.turnos.find(x=>x.id===e.target.closest('.item').dataset.id); if(!t) return;
+  const lr=labParaTurno(t);
+  if (lr && lr.nivel!=='ok' && e.target.dataset.c!=='1'){ e.target.dataset.c='1'; e.target.textContent='Enviar igual'; toast(lr.txt, true); return; }
   const p=S.pacientes.get(t.paciente_id);
   if (!abrirWa(p, rellenar(S.tpl.recordatorio, p, t))) return;
   try{ await q(sb.from('turnos').update({ recordatorio_enviado:new Date().toISOString() }).eq('id', t.id)); t.recordatorio_enviado=new Date().toISOString(); pintarLateral(S.turnos, startDay(new Date()), addDays(startDay(new Date()),1)); }catch(err){}
@@ -677,7 +712,7 @@ $('#c-list').addEventListener('click', e=>{
 /* ---------- diálogo turno ---------- */
 let tEdit=null, tPac=null;
 $('#b-nuevo').onclick = () => abrirTurno(null, { fecha: ymd(aModo==='dia'?aFecha:new Date()) });
-function selPac(p){ tPac=p; $('#t-pac-w').hidden=!!p; $('#t-pac-sel').hidden=!p; if(p) $('#t-pac-n').innerHTML=`<b>${esc(nombrePac(p))}</b> ${p.telefono?'<small class="hint">'+esc(p.telefono)+'</small>':''}`; }
+function selPac(p){ tPac=p; setTimeout(pintarLabTurno,0); $('#t-pac-w').hidden=!!p; $('#t-pac-sel').hidden=!p; if(p) $('#t-pac-n').innerHTML=`<b>${esc(nombrePac(p))}</b> ${p.telefono?'<small class="hint">'+esc(p.telefono)+'</small>':''}`; }
 $('#t-pac-x').onclick=()=>{ selPac(null); $('#t-pac-q').value=''; $('#t-pac-q').focus(); };
 async function abrirTurno(t, pre){
   if (!S.prof.length){ toast('Primero cargá un profesional en Ajustes.', true); return; }
@@ -690,11 +725,12 @@ async function abrirTurno(t, pre){
   $('#t-dur').value = t?Math.round((new Date(t.fin)-a)/60000):(+S.cfg.duracion||30);
   $('#t-prof').value = t?(t.profesional_id||''):(pre.prof||aProf||(S.prof.find(p=>p.activo)||{}).id||'');
   $('#t-motivo').value = t?t.motivo:(pre.motivo||''); $('#t-estado').value=t?t.estado:'reservado'; $('#t-notas').value=t?t.notas:'';
-  $('#t-save').dataset.ok=''; $('#t-save').textContent='Guardar';
+  $('#t-save').dataset.ok=''; $('#t-save').dataset.lab=''; $('#t-save').textContent='Guardar';
   $('#t-del').hidden=!t; $('#t-wa').hidden=!t; $('#t-del').dataset.c='';  $('#t-del').textContent='Borrar';
   $('#t-info').textContent = t&&t.recordatorio_enviado ? 'Recordatorio enviado el '+new Date(t.recordatorio_enviado).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})+'.' : '';
   selPac(t ? (S.pacientes.get(t.paciente_id)||null) : (pre.paciente||null)); $('#t-pac-q').value='';
   $('#t-pac-l').hidden=true;
+  pintarLabTurno();
   $('#d-turno').showModal();
   if (!tPac) setTimeout(()=>$('#t-pac-q').focus(),50);
 }
@@ -730,6 +766,8 @@ $('#f-turno').onsubmit = async e=>{
   const ini=new Date(y,mo-1,d,hh,mi), fin=new Date(ini.getTime()+(+$('#t-dur').value||30)*60000);
   const row={ sede_id:sedeId, paciente_id:tPac?tPac.id:null, profesional_id:$('#t-prof').value||null, inicio:ini.toISOString(), fin:fin.toISOString(), motivo:$('#t-motivo').value.trim(), estado:$('#t-estado').value, notas:$('#t-notas').value.trim() };
   if (!row.paciente_id && !row.motivo){ toast('Elegí un paciente o escribí un motivo (por ejemplo "Bloqueado").', true); return; }
+  const lr = labParaTurno(row);
+  if (lr && lr.nivel!=='ok' && row.estado==='confirmado' && (!tEdit || tEdit.estado!=='confirmado') && $('#t-save').dataset.lab!=='1'){ $('#t-save').dataset.lab='1'; $('#t-save').textContent='Confirmar igual'; toast('El trabajo de laboratorio todavía no está. Tocá "Confirmar igual" si ya lo revisaste.', true); return; }
   const choque = row.estado!=='cancelado' && (S.fam||[]).find(f=>f.profesional_id===row.profesional_id && new Date(f.inicio)<fin && new Date(f.fin)>ini);
   const firma = choque ? choque.titulo+row.inicio+row.profesional_id : '';
   if (choque && $('#t-save').dataset.ok!==firma){ $('#t-save').dataset.ok=firma; $('#t-info').innerHTML='<b style="color:var(--bad)">Ese horario está bloqueado por una fecha familiar: '+esc(choque.titulo)+'.</b> Tocá Guardar otra vez si querés dar el turno igual.'; $('#t-save').textContent='Guardar igual'; return; }
@@ -807,7 +845,18 @@ async function pintarPend(){
   S.tareas = l;
   await cargarLabVinc(l);
   const tur = l.filter(t=>t.tipo==='turno'), tar = l.filter(t=>t.tipo==='tarea'), lab = l.filter(t=>t.tipo==='lab');
-  $('#pd-lab').innerHTML = lab.length ? lab.map(itemLab).join('') : `<p class="hint">${hechas?'Nada todavía.':'No hay trabajos pendientes de laboratorio.'}</p>`;
+  let avisos = '';
+  if (!hechas){
+    S.labTar = l.filter(t=>t.tipo==='lab');
+    try{
+      const prox = await q(sb.from('turnos').select('*').eq('sede_id', sedeId).gte('inicio', new Date().toISOString()).lt('inicio', addDays(startDay(new Date()),15).toISOString()).in('estado',['reservado','confirmado']).order('inicio'));
+      const malos = prox.map(t=>({t, r:labParaTurno(t)})).filter(x=>x.r && x.r.nivel!=='ok');
+      avisos = malos.map(({t,r})=>{ const p=S.pacientes.get(t.paciente_id), d=new Date(t.inicio);
+        return `<div class="item" data-turno-lab="${t.id}"><div class="t"><b><span class="lbw ${r.nivel}">LAB ?</span>${esc(nombrePac(p))} · ${DIAS3[d.getDay()]} ${d.getDate()}/${d.getMonth()+1} ${hm(d)}</b><span>${esc(t.motivo||'')} · ${r.nivel==='falta'?'el trabajo todavía no llegó':'no hay pedido cargado: revisá que esté'}${t.estado==='confirmado'?' · ya está confirmado':''}</span></div><div class="acts"><button class="btn ghost" data-a="verturno" style="padding:6px 10px">Ver turno</button></div></div>`; }).join('');
+      S.turnosLab = malos.map(x=>x.t);
+    }catch(e){}
+  }
+  $('#pd-lab').innerHTML = avisos + (lab.length ? lab.map(itemLab).join('') : (avisos?'':`<p class="hint">${hechas?'Nada todavía.':'No hay trabajos pendientes de laboratorio.'}</p>`));
   $('#pd-turnos').innerHTML = tur.length ? tur.map(itemTarea).join('') : `<p class="hint">${hechas?'Nada todavía.':'No hay pacientes esperando turno.'}</p>`;
   $('#pd-tareas').innerHTML = tar.length ? tar.map(itemTarea).join('') : `<p class="hint">${hechas?'Nada todavía.':'No hay tareas pendientes.'}</p>`;
   const rw = $('#pd-reprog').closest('.card'); rw.hidden = hechas;
@@ -867,6 +916,7 @@ async function clickTarea(e){
 $('#pd-turnos').addEventListener('click', clickTarea);
 $('#pd-tareas').addEventListener('click', clickTarea);
 $('#pd-lab').addEventListener('click', clickTarea);
+$('#pd-lab').addEventListener('click', e=>{ const it=e.target.closest('[data-turno-lab]'); if(!it||e.target.dataset.a!=='verturno') return; const t=(S.turnosLab||[]).find(x=>x.id===it.dataset.turnoLab); if(t) abrirTurno(t); });
 $('#pd-nlab').onclick=()=>abrirTarea(null,'lab');
 async function pedirLab(t, p){
   const upd = { estado_lab:'pedido', pedido_en: hoyYmd() };

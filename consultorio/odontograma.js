@@ -294,3 +294,31 @@ export function describirAccion(a) {
   return `${a.diente}: ${nombre}${caras}${a.tipo === 'borrar' ? '' : (a.modo === 'r' ? ' (a realizar)' : ' (existente)')}`;
 }
 export { info as infoDiente };
+
+// ---------- dibujo grande para estratificación (carillas / operatoria) ----------
+// Devuelve un SVG con la corona vestibular de cada pieza, guías de tercios y mamelones.
+export function svgEstratificacion(piezas) {
+  const lista = (piezas || []).map(Number).filter(f => VALIDOS.has(String(f))).slice(0, 6);
+  if (!lista.length) lista.push(11);
+  const ts = lista.map(info), gap = 8;
+  const izq = 16, W = ts.reduce((s, t) => s + t.w + gap, izq), chMax = Math.max(...ts.map(t => t.ch));
+  const H = chMax * 1.25 + 26;
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W * 10}" height="${H * 10}">${DEFS}<rect width="100%" height="100%" fill="#fbfaf6"/>`;
+  let x = izq;
+  for (const t of ts) {
+    const cx = x + t.w / 2, y0 = 10 + (chMax - t.ch) * .2, { d } = crown(t), h = t.ch, a = t.w / 2;
+    // las piezas inferiores se muestran con el borde incisal arriba
+    s += `<g transform="translate(${cx} ${t.sup ? y0 : y0 + h * 1.15}) ${t.sup ? '' : 'scale(1 -1)'}">`;
+    s += `<path d="${d}" fill="url(#oEn)" stroke="#8f8774" stroke-width=".35"/><path d="${d}" fill="url(#oEnV)"/>`;
+    s += `<path d="M ${-a * .95} ${h / 3} H ${a * .95} M ${-a * .98} ${h * 2 / 3} H ${a * .98}" stroke="#b9b09c" stroke-width=".18" stroke-dasharray="1 .8"/>`;
+    if (t.kind === 'inc' || t.kind === 'can') {
+      const mm = t.kind === 'can' ? [0] : [-a * .5, 0, a * .5];
+      for (const m of mm) s += `<path d="M ${m - a * .2} ${h * .98} Q ${m - a * .2} ${h * .55} ${m} ${h * .5} Q ${m + a * .2} ${h * .55} ${m + a * .2} ${h * .98}" fill="none" stroke="#c9a86a" stroke-width=".22" stroke-dasharray=".8 .6" opacity=".9"/>`;
+    }
+    s += `</g>`;
+    s += `<text x="${cx}" y="${H - 5}" text-anchor="middle" font-family="sans-serif" font-size="5" font-weight="600" fill="#77746c">${t.fdi}</text>`;
+    x += t.w + gap;
+  }
+  s += `<text x="3" y="${10 + chMax * .17}" font-family="sans-serif" font-size="2.6" fill="#b3afa3">cervical</text><text x="3" y="${10 + chMax * .5}" font-family="sans-serif" font-size="2.6" fill="#b3afa3">medio</text><text x="3" y="${10 + chMax * .85}" font-family="sans-serif" font-size="2.6" fill="#b3afa3">incisal</text>`;
+  return { svg: s + `</svg>`, aspecto: W / H };
+}

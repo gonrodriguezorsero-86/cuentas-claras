@@ -1,5 +1,5 @@
-const C="rnconsultorio-v12";
-const FILES=["./","index.html","config.js","manifest.webmanifest","icon-192.png","icon-512.png","apple-touch-icon.png","odontograma.js","visor3d.js"];
+const C="rnconsultorio-v13";
+const FILES=["./","index.html","config.js","manifest.webmanifest","icon-192.png","icon-512.png","apple-touch-icon.png","odontograma.js","visor3d.js","estratificacion.js"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(FILES)));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C&&x.startsWith("rnconsultorio")).map(x=>caches.delete(x)))));self.clients.claim()});
 self.addEventListener("fetch",e=>{

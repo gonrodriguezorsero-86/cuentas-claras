@@ -148,6 +148,21 @@ dialog.visor{width:100vw;height:100vh;height:100dvh;max-width:none;max-height:no
 .visor .vb button{background:#3a3834;color:#fff;border:0;border-radius:7px;padding:7px 11px;cursor:pointer}
 .visor .vc{flex:1;min-height:0}.visor img{max-width:100%;max-height:100%;margin:auto;display:block;object-fit:contain}
 .ia-r .item{align-items:flex-start}
+dialog.evo{width:min(1000px,98vw)}
+.evo-sec{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;background:#fcfbf8}
+.evo-sec h3{margin:0}
+.row4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:700px){.row4{grid-template-columns:1fr 1fr}}
+.capas{width:100%;border-collapse:collapse;font-size:13px}.capas td{padding:3px 4px;vertical-align:middle}.capas input{padding:6px 8px}
+.capas .chip{width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);cursor:pointer;display:inline-block}
+.caras-ck{display:flex;gap:6px;flex-wrap:wrap}.caras-ck label{border:1px solid var(--line);border-radius:7px;padding:4px 9px;font-size:13px;display:flex;gap:4px;align-items:center;background:#fff}
+.lz-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.pen{width:24px;height:24px;border-radius:50%;background:var(--c);border:2px solid #fff;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}.pen.on{box-shadow:0 0 0 2px var(--ink)}
+.lz-wrap{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fbfaf6}
+.lz-c{display:block;margin:0 auto}
+.lz-in{position:absolute;width:200px;padding:5px 8px;font-size:13px;border:1px solid var(--ink);border-radius:6px;background:#fff}
+.evc{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;margin-bottom:10px;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:10px}
+.evc h4{margin:0 0 4px;font:600 15px var(--head)}.evc .mat{font-size:12.5px;color:#444;margin-top:4px}.evc img{width:180px;border-radius:8px;border:1px solid var(--line)}
+@media(max-width:700px){.evc{grid-template-columns:1fr}.evc img{width:100%}}
 dialog form{display:flex;flex-direction:column;gap:12px}
 .dacts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .dacts .l{margin-right:auto;display:flex;gap:8px;flex-wrap:wrap}
@@ -401,7 +416,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
     <button type="button" class="btn ghost" id="fi-turno">+ Turno</button>
     <button type="button" class="btn" id="fi-close">Cerrar</button>
   </div>
-  <div class="fi-tabs" id="fi-tabs"><button data-t="odo" class="on">Odontograma</button><button data-t="arch">Fotos y escaneos <span id="fi-narch" class="hint"></span></button><button data-t="hist">Turnos</button></div>
+  <div class="fi-tabs" id="fi-tabs"><button data-t="odo" class="on">Odontograma</button><button data-t="evo">Historia clínica</button><button data-t="arch">Fotos y escaneos <span id="fi-narch" class="hint"></span></button><button data-t="hist">Turnos</button></div>
   <div class="fi-body">
     <section id="fi-odo">
       <div class="odo-bar">
@@ -429,6 +444,10 @@ dialog form{display:flex;flex-direction:column;gap:12px}
         </div>
       </div>
     </section>
+    <section id="fi-evo" hidden>
+      <div class="toolbar"><input id="ev-q" type="search" placeholder="Buscar en la historia (pieza, material, texto)" autocomplete="off"><span style="flex:1"></span><button type="button" class="btn" id="ev-nueva">+ Nueva evolución</button></div>
+      <div id="ev-list"></div>
+    </section>
     <section id="fi-arch" hidden>
       <div class="drop" id="ar-drop">Arrastrá acá fotos, radiografías o escaneos (STL, PLY, OBJ o .zip de Medit) · <button type="button" class="link" id="ar-pick">o elegí archivos</button>
         <div class="hint" style="margin-top:4px">Hasta 50 MB por archivo. <select id="ar-tipo" style="width:auto;display:inline-block;padding:3px 6px;font-size:12px"><option value="">Tipo automático</option><option value="foto">Foto</option><option value="rx">Radiografía</option><option value="escaneo">Escaneo</option><option value="documento">Documento</option></select></div>
@@ -440,6 +459,53 @@ dialog form{display:flex;flex-direction:column;gap:12px}
     <section id="fi-hist" hidden><div id="fi-hlist"></div></section>
   </div>
 </dialog>
+<dialog id="d-evo" class="evo"><form id="f-evo">
+  <h2 id="ev-ttl">Nueva evolución</h2>
+  <div class="row4"><label>Fecha<input name="fecha" type="date" required></label><label>Profesional<select name="profesional_id"></select></label>
+    <label>Tratamiento<select name="tipo"><option value="consulta">Consulta / evolución</option><option value="operatoria">Operatoria</option><option value="carillas">Carillas</option><option value="endodoncia">Endodoncia</option><option value="periodoncia">Periodoncia</option><option value="cirugia">Cirugía</option><option value="protesis">Prótesis</option><option value="implantes">Implantes</option><option value="ortodoncia">Ortodoncia</option><option value="control">Control</option><option value="otro">Otro</option></select></label>
+    <label>Piezas<input name="piezas" placeholder="Ej: 11 21" autocomplete="off" inputmode="numeric"></label></div>
+  <div id="ev-op" class="evo-sec" hidden>
+    <h3 id="ev-op-t">Operatoria</h3>
+    <div id="ev-car-w" class="row4" hidden>
+      <label>Tipo de carilla<select name="car_tipo"><option>Directa de resina</option><option>Indirecta de resina</option><option>Cerámica (disilicato)</option><option>Cerámica feldespática</option></select></label>
+      <label>Preparación<select name="car_prep"><option>Sin preparación</option><option>Mínima en esmalte</option><option>Convencional</option></select></label>
+      <label>Cemento<input name="car_cemento" list="dl-cementos" autocomplete="off" placeholder="si es indirecta"></label>
+      <label>Color final<input name="car_color" list="dl-colores" autocomplete="off"></label></div>
+    <div id="ev-caras-w"><span class="hint" style="font-size:13px">Caras</span><div class="caras-ck" id="ev-caras"></div></div>
+    <div class="row4">
+      <label>Aislamiento<select name="aislamiento"><option>Absoluto (goma dique)</option><option>Relativo</option></select></label>
+      <label id="ev-clase-w">Clase<select name="clase"><option value="">—</option><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option></select></label>
+      <label>Base / liner<input name="base" list="dl-bases" autocomplete="off" placeholder="Ninguna"></label>
+      <label>Técnica<select name="tecnica"><option>Incremental</option><option>Estratificación por capas</option><option>Bulk fill</option><option>Inyectada</option><option>Estampado / llave de silicona</option></select></label></div>
+    <div class="row4">
+      <label>Grabado ácido<select name="grab_tipo"><option>Grabado total (ácido fosfórico)</option><option>Grabado selectivo de esmalte</option><option>Autograbado</option><option>Sin grabado</option></select></label>
+      <label>Ácido<input name="grab_acido" list="dl-acidos" autocomplete="off" placeholder="Ácido fosfórico 37%"></label>
+      <label>Tiempo en esmalte (s)<input name="grab_esm" type="number" min="0" inputmode="numeric" placeholder="30"></label>
+      <label>Tiempo en dentina (s)<input name="grab_den" type="number" min="0" inputmode="numeric" placeholder="15"></label></div>
+    <div class="row4">
+      <label style="grid-column:span 2">Sistema adhesivo<input name="adhesivo" list="dl-adhesivos" autocomplete="off"></label>
+      <label>Fotocurado (s)<input name="foto_s" type="number" min="0" inputmode="numeric" placeholder="20"></label>
+      <label>Terminación y pulido<input name="pulido" list="dl-pulido" autocomplete="off"></label></div>
+    <div><span class="hint" style="font-size:13px" id="ev-capas-t">Resinas usadas</span>
+      <table class="capas"><tbody id="ev-capas"></tbody></table>
+      <button type="button" class="link" id="ev-capa-add" style="font-size:13px">+ Agregar capa / resina</button></div>
+    <div id="ev-lz-w">
+      <label class="chk" id="ev-lz-on-w" style="font-size:13px"><input type="checkbox" id="ev-lz-on"> Agregar dibujo de estratificación</label>
+      <div id="ev-lz-box"><p class="hint" style="font-size:12.5px;margin:4px 0">Elegí el color de la capa (los círculos) y dibujá sobre el diente. Con <b>Texto</b> tocás donde querés escribir.</p><div id="ev-lz"></div></div>
+    </div>
+    <label class="chk" style="font-size:13px"><input type="checkbox" id="ev-odo" checked> Marcar en el odontograma como realizado</label>
+  </div>
+  <label>Observaciones<div class="voz"><textarea name="texto" rows="3" placeholder="Qué se hizo, indicaciones, próximo paso…"></textarea><button type="button" class="btn ghost mic" id="ev-mic" title="Dictar">🎤</button></div></label>
+  <div class="dacts"><span class="l"><button type="button" class="btn danger" id="ev-del">Borrar</button></span><button type="button" class="btn ghost" id="ev-cancel">Cancelar</button><button class="btn">Guardar</button></div>
+</form></dialog>
+<datalist id="dl-resinas"><option>Filtek Z350 XT</option><option>Filtek Universal</option><option>Filtek Z250</option><option>Filtek Supreme Ultra</option><option>Filtek One Bulk Fill</option><option>Filtek Z350 XT Flow</option><option>Estelite Omega</option><option>Estelite Sigma Quick</option><option>Estelite Asteria</option><option>Estelite Universal Flow</option><option>Palfique LX5</option><option>Tetric N-Ceram</option><option>Tetric EvoCeram</option><option>Tetric PowerFill</option><option>Tetric N-Flow</option><option>IPS Empress Direct</option><option>Essentia (GC)</option><option>G-ænial</option><option>Gradia Direct</option><option>Harmonize (Kerr)</option><option>Herculite Ultra</option><option>Venus Pearl</option><option>Venus Diamond</option><option>Charisma Topaz</option><option>Ceram.X Spectra ST</option><option>SDR flow+</option><option>Beautifil II</option><option>Admira Fusion</option><option>Brilliant EverGlow</option><option>Enamel Plus HRi</option><option>Opallis (FGM)</option><option>Vittra APS (FGM)</option><option>Llis (FGM)</option><option>Forma (Ultradent)</option><option>Amaris (Voco)</option><option>Inspiro</option></datalist>
+<datalist id="dl-capas"><option>Esmalte palatino</option><option>Dentina</option><option>Mamelones</option><option>Efectos / tintes</option><option>Halo incisal</option><option>Esmalte vestibular</option><option>Cuerpo</option><option>Resina flow (base)</option></datalist>
+<datalist id="dl-colores"><option>A1</option><option>A2</option><option>A3</option><option>A3.5</option><option>B1</option><option>B2</option><option>C1</option><option>BL / WE</option><option>OW</option><option>A1E</option><option>A2E</option><option>A1D</option><option>A2D</option><option>A3D</option><option>WE</option><option>WB</option><option>CT (transparente)</option><option>Trans</option><option>OBA / opalescente</option><option>Azul</option><option>Blanco (tinte)</option><option>Ocre (tinte)</option></datalist>
+<datalist id="dl-adhesivos"><option>Single Bond Universal (3M)</option><option>Scotchbond Universal Plus (3M)</option><option>Adper Single Bond 2 (3M)</option><option>Adper Scotchbond Multi-Purpose (3M)</option><option>Clearfil SE Bond (Kuraray)</option><option>Clearfil SE Protect (Kuraray)</option><option>Clearfil Universal Bond Quick (Kuraray)</option><option>OptiBond FL (Kerr)</option><option>OptiBond Universal (Kerr)</option><option>OptiBond Solo Plus (Kerr)</option><option>Prime&amp;Bond Active (Dentsply)</option><option>Prime&amp;Bond Universal (Dentsply)</option><option>Tetric N-Bond Universal (Ivoclar)</option><option>Adhese Universal (Ivoclar)</option><option>Futurabond U (Voco)</option><option>G-Premio Bond (GC)</option><option>iBond Universal (Kulzer)</option><option>All-Bond Universal (Bisco)</option><option>Ambar Universal (FGM)</option><option>Peak Universal Bond (Ultradent)</option></datalist>
+<datalist id="dl-acidos"><option>Ácido fosfórico 37%</option><option>Ácido fosfórico 35% (Ultra-Etch)</option><option>Scotchbond Universal Etchant (3M)</option><option>Condac 37 (FGM)</option><option>Total Etch (Ivoclar)</option><option>N-Etch (Ivoclar)</option><option>Ácido fluorhídrico 5% (cerámica)</option><option>Ácido fluorhídrico 10% (cerámica)</option></datalist>
+<datalist id="dl-bases"><option>Ninguna</option><option>Ionómero vítreo</option><option>Ionómero modificado con resina (Vitrebond)</option><option>Hidróxido de calcio (Dycal)</option><option>Biodentine</option><option>MTA</option><option>Resina flow</option><option>Sellado dentinario inmediato</option></datalist>
+<datalist id="dl-pulido"><option>Discos Sof-Lex</option><option>Gomas de pulido</option><option>Pastas de pulido + fieltro</option><option>Fresas multihojas</option><option>Tiras de pulido</option><option>Cepillos de carburo de silicio</option></datalist>
+<datalist id="dl-cementos"><option>Variolink Esthetic LC</option><option>RelyX Veneer</option><option>Resina precalentada</option><option>NX3 (Kerr)</option><option>Choice 2 (Bisco)</option><option>Panavia V5</option></datalist>
 <dialog id="d-ia">
   <h2>Análisis de foto con IA</h2>
   <p class="hint">La IA sugiere lo que ve en la foto. <b>Son sugerencias:</b> revisalas vos antes de pasarlas al odontograma.</p>
@@ -476,6 +542,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import CFG from './config.js';
 import * as ODO from './odontograma.js';
+import * as EST from './estratificacion.js';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1179,8 +1246,8 @@ async function abrirFicha(p, tab){
   $('#d-ficha').showModal(); fichaTab(tab||fiTab||'odo');
   cargarOdo(); contarArchivos();
 }
-function fichaTab(t){ fiTab=t; $$('#fi-tabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===t)); ['odo','arch','hist'].forEach(x=>$('#fi-'+x).hidden = x!==t);
-  if (t==='arch') pintarArchivos(); if (t==='hist') pintarFichaHist(); }
+function fichaTab(t){ fiTab=t; $$('#fi-tabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===t)); ['odo','evo','arch','hist'].forEach(x=>$('#fi-'+x).hidden = x!==t);
+  if (t==='arch') pintarArchivos(); if (t==='hist') pintarFichaHist(); if (t==='evo') pintarEvos(); }
 $('#fi-tabs').addEventListener('click', e=>{ const b=e.target.closest('button[data-t]'); if(b) fichaTab(b.dataset.t); });
 $('#fi-close').onclick=()=>{ guardarOdoYa(); $('#d-ficha').close(); };
 $('#d-ficha').addEventListener('cancel', ()=>guardarOdoYa());
@@ -1358,6 +1425,146 @@ $('#vi-x').onclick=()=>$('#visor').close();
 $('#visor').addEventListener('close', ()=>{ if(visor){ visor.cerrar(); visor=null; } $('#vi-c').innerHTML=''; });
 $('#vi-vistas').addEventListener('click', e=>{ const b=e.target.closest('[data-v]'); if(b&&visor) visor.vista(b.dataset.v); });
 $('#vi-dl').onclick=async()=>{ if(!visorArch) return; const { data } = await sb.storage.from('pacientes').createSignedUrl(visorArch.ruta, 600, { download: visorArch.nombre }); if (data) location.href=data.signedUrl; };
+
+/* historia clínica (evoluciones) */
+const TIPO_EV = { consulta:'Consulta', operatoria:'Operatoria', carillas:'Carillas', endodoncia:'Endodoncia', periodoncia:'Periodoncia', cirugia:'Cirugía', protesis:'Prótesis', implantes:'Implantes', ortodoncia:'Ortodoncia', control:'Control', otro:'Otro' };
+let evEdit=null, evCapas=[], lienzo=null, evDibujo=null;
+const piezasDe = txt => [...new Set((String(txt||'').match(/\b[1-8][1-8]\b/g)||[]).filter(d=>ODO.VALIDOS.has(d)))];
+function matResumen(e){
+  const d=e.datos||{}, out=[];
+  if (d.carilla && e.tipo==='carillas') out.push([d.carilla.tipo, d.carilla.preparacion, d.carilla.color_final?'color '+d.carilla.color_final:''].filter(Boolean).join(' · '));
+  if (d.caras && d.caras.length) out.push('Caras '+d.caras.join(''));
+  if (d.clase) out.push('Clase '+d.clase);
+  if (d.aislamiento) out.push('Aislamiento '+d.aislamiento.split(' ')[0].toLowerCase());
+  if (d.base && d.base!=='Ninguna') out.push('Base: '+d.base);
+  if (d.grabado && d.grabado.tipo) out.push(d.grabado.tipo+(d.grabado.acido?' · '+d.grabado.acido:'')+(d.grabado.esmalte_s||d.grabado.dentina_s?` (${[d.grabado.esmalte_s?'esm. '+d.grabado.esmalte_s+'s':'', d.grabado.dentina_s?'dent. '+d.grabado.dentina_s+'s':''].filter(Boolean).join(', ')})`:''));
+  if (d.adhesivo && d.adhesivo.nombre) out.push('Adhesivo: '+d.adhesivo.nombre+(d.adhesivo.fotocurado_s?' · luz '+d.adhesivo.fotocurado_s+'s':''));
+  if (d.carilla && d.carilla.cemento) out.push('Cemento: '+d.carilla.cemento);
+  const cs=(d.capas||[]).filter(c=>c.resina||c.color);
+  if (cs.length) out.push(cs.map(c=>`${c.capa?c.capa+': ':''}${[c.resina,c.color].filter(Boolean).join(' ')}`).join(' · '));
+  if (d.tecnica && (e.tipo==='operatoria'||e.tipo==='carillas')) out.push('Técnica: '+d.tecnica.toLowerCase());
+  if (d.pulido) out.push('Pulido: '+d.pulido);
+  return out;
+}
+async function pintarEvos(){
+  const el=$('#ev-list'); el.innerHTML='<p class="hint">Cargando…</p>';
+  try{
+    S.evos = await q(sb.from('evoluciones').select('*').eq('paciente_id', fiPac.id).order('fecha',{ascending:false}).order('creado',{ascending:false}));
+    const qv=norm($('#ev-q').value);
+    const l = qv ? S.evos.filter(e=>norm([TIPO_EV[e.tipo], (e.piezas||[]).join(' '), e.texto, matResumen(e).join(' ')].join(' ')).includes(qv)) : S.evos;
+    el.innerHTML = l.length ? l.map(e=>{ const f=new Date(e.fecha+'T12:00:00');
+      return `<div class="evc" data-id="${e.id}"><div><h4>${esc(f.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}))} · ${esc(TIPO_EV[e.tipo]||e.tipo)}${e.piezas&&e.piezas.length?' · pieza'+(e.piezas.length>1?'s ':' ')+esc(e.piezas.join(', ')):''}</h4>
+        <div class="hint">${esc(nombreProf(profById(e.profesional_id)))}</div>${e.texto?`<div style="margin-top:4px;white-space:pre-wrap">${esc(e.texto)}</div>`:''}${matResumen(e).map(x=>`<div class="mat">${esc(x)}</div>`).join('')}</div>
+        ${e.datos&&e.datos.dibujo&&((e.datos.dibujo.trazos||[]).length||(e.datos.dibujo.textos||[]).length)?`<img data-dib="${e.id}" alt="Dibujo de estratificación">`:'<span></span>'}</div>`; }).join('')
+      : `<p class="hint">${qv?'No hay evoluciones que coincidan.':'Todavía no hay evoluciones cargadas.'}</p>`;
+    for (const img of el.querySelectorAll('img[data-dib]')){ const e=S.evos.find(x=>x.id===img.dataset.dib); EST.imagenEstratificacion(e.piezas, e.datos.dibujo, 520).then(u=>img.src=u); }
+  }catch(err){ el.innerHTML='<p class="hint">'+esc(errMsg(err))+'</p>'; }
+}
+$('#ev-q').addEventListener('input', ()=>{ clearTimeout(pqT); pqT=setTimeout(pintarEvos,200); });
+$('#ev-nueva').onclick=()=>abrirEvo(null);
+$('#ev-list').addEventListener('click', e=>{ const c=e.target.closest('.evc'); if(c) abrirEvo(S.evos.find(x=>x.id===c.dataset.id)); });
+const MAT = () => LS.get('rn_mat', {});
+function pintarCapas(){
+  $('#ev-capas').innerHTML = evCapas.map((c,i)=>`<tr data-i="${i}"><td style="width:30px"><span class="chip" style="background:${c.c}" title="Usar este color para dibujar"></span></td>
+    <td><input data-k="capa" value="${esc(c.capa||'')}" placeholder="Capa" list="dl-capas"></td><td><input data-k="resina" value="${esc(c.resina||'')}" placeholder="Resina" list="dl-resinas"></td>
+    <td style="width:110px"><input data-k="color" value="${esc(c.color||'')}" placeholder="Color" list="dl-colores"></td><td><input data-k="nota" value="${esc(c.nota||'')}" placeholder="Nota (espesor, zona…)"></td>
+    <td style="width:28px"><button type="button" class="link" data-x="${i}" title="Quitar">✕</button></td></tr>`).join('');
+  if (lienzo) lienzo.setPens(evCapas.map(c=>({ capa:c.capa, color:c.c })));
+}
+const PALETA = ['#4f8fd6','#e08a2e','#c25b93','#7d63c6','#2e9e8f','#c9a227','#d64545','#5a7d2a'];
+$('#ev-capas').addEventListener('input', e=>{ const tr=e.target.closest('tr[data-i]'); if(!tr||!e.target.dataset.k) return; evCapas[+tr.dataset.i][e.target.dataset.k]=e.target.value; if(e.target.dataset.k==='capa' && lienzo) lienzo.setPens(evCapas.map(c=>({ capa:c.capa, color:c.c }))); });
+$('#ev-capas').addEventListener('click', e=>{ if (e.target.dataset.x!==undefined){ evCapas.splice(+e.target.dataset.x,1); pintarCapas(); } });
+$('#ev-capa-add').onclick=()=>{ evCapas.push({ capa:'', resina:'', color:'', nota:'', c:PALETA[evCapas.length%PALETA.length] }); pintarCapas(); };
+function modoEvo(){
+  const f=$('#f-evo'), t=f.tipo.value, op = t==='operatoria'||t==='carillas', car = t==='carillas';
+  $('#ev-op').hidden=!op; $('#ev-car-w').hidden=!car; $('#ev-clase-w').hidden=car;
+  $('#ev-op-t').textContent = car ? 'Carillas: materiales y capas' : 'Operatoria: materiales';
+  $('#ev-capas-t').textContent = car ? 'Capas (cada color se usa para dibujar)' : 'Resinas usadas';
+  if (op && !evCapas.length){ evCapas = car ? EST.CAPAS_BASE.map(c=>({ ...c, c:c.color, resina:'', color:'', nota:'' })) : [{ capa:'Resina', resina:MAT().resina||'', color:'', nota:'', c:PALETA[1] }]; pintarCapas(); }
+  else if (op && $('#ev-capas').children.length!==evCapas.length) pintarCapas();
+  const piezas = piezasDe(f.piezas.value);
+  // caras (solo una pieza, operatoria)
+  $('#ev-caras-w').hidden = car || piezas.length!==1;
+  if (piezas.length===1){ const sel=new Set((evEdit&&evEdit.datos&&evEdit.datos.caras)||[...$$('#ev-caras input:checked')].map(x=>x.value));
+    $('#ev-caras').innerHTML = ODO.carasDe(piezas[0]).map(c=>`<label><input type="checkbox" value="${c}" ${sel.has(c)?'checked':''}> ${c} <span class="hint">${ODO.CARA_N[c]}</span></label>`).join(''); }
+  // dibujo
+  $('#ev-lz-on-w').hidden = car; const verLz = op && (car || $('#ev-lz-on').checked);
+  $('#ev-lz-box').hidden = !verLz;
+  if (verLz && !lienzo) lienzo = EST.crearLienzo($('#ev-lz'), { piezas: piezas.length?piezas:['11'], datos: evDibujo, pens: evCapas.map(c=>({ capa:c.capa, color:c.c })), onChange: d=>{ evDibujo=d; } });
+  else if (verLz && lienzo) lienzo.setPiezas(piezas.length?piezas:['11']);
+  if (!verLz && lienzo){ evDibujo = lienzo.get(); lienzo.destroy(); lienzo=null; }
+}
+$('#f-evo').tipo.addEventListener('change', ()=>{ evCapas=[]; modoEvo(); });
+$('#f-evo').piezas.addEventListener('change', modoEvo);
+$('#ev-lz-on').addEventListener('change', modoEvo);
+$('#f-evo').texto.addEventListener('input', e=>{ const f=$('#f-evo'), v=norm(e.target.value);
+  if (f.tipo.value==='consulta'){ if (/carilla/.test(v)){ f.tipo.value='carillas'; evCapas=[]; modoEvo(); } else if (/operatoria|restauraci|obturaci|resina/.test(v)){ f.tipo.value='operatoria'; evCapas=[]; modoEvo(); } }
+  if (!f.piezas.value.trim()){ const p=piezasDe(e.target.value); if (p.length){ f.piezas.value=p.join(' '); modoEvo(); } } });
+function abrirEvo(e){
+  evEdit=e; const f=$('#f-evo'); f.reset(); const d=(e&&e.datos)||{}, m=MAT();
+  if (lienzo){ lienzo.destroy(); lienzo=null; }
+  $('#ev-ttl').textContent = e ? 'Evolución' : 'Nueva evolución';
+  f.profesional_id.innerHTML = '<option value="">—</option>' + (S.profAll||[]).filter(p=>p.sede_id===(fiPac.sede_id||sedeId)).map(p=>`<option value="${p.id}">${esc(nombreProf(p))}</option>`).join('');
+  f.fecha.value = e ? e.fecha : ymd(new Date());
+  f.profesional_id.value = e ? (e.profesional_id||'') : (perfil.profesional_id||'');
+  f.tipo.value = e ? e.tipo : 'consulta'; f.piezas.value = e ? (e.piezas||[]).join(' ') : (odoSel||'');
+  f.texto.value = e ? e.texto : '';
+  f.aislamiento.value = d.aislamiento || 'Absoluto (goma dique)'; f.clase.value = d.clase||''; f.base.value = d.base||''; f.tecnica.value = d.tecnica || 'Incremental';
+  const g = d.grabado || { tipo:m.grab_tipo, acido:m.acido }; f.grab_tipo.value = g.tipo || 'Grabado total (ácido fosfórico)'; f.grab_acido.value = g.acido||''; f.grab_esm.value = g.esmalte_s||''; f.grab_den.value = g.dentina_s||'';
+  const a = d.adhesivo || { nombre:m.adhesivo }; f.adhesivo.value = a.nombre||''; f.foto_s.value = a.fotocurado_s||''; f.pulido.value = d.pulido || (e?'':(m.pulido||''));
+  const c = d.carilla || {}; f.car_tipo.value = c.tipo || 'Directa de resina'; f.car_prep.value = c.preparacion || 'Sin preparación'; f.car_cemento.value = c.cemento||''; f.car_color.value = c.color_final||'';
+  evCapas = (d.capas||[]).map(x=>({...x})); evDibujo = d.dibujo || null;
+  $('#ev-lz-on').checked = !!(d.dibujo && ((d.dibujo.trazos||[]).length || (d.dibujo.textos||[]).length));
+  $('#ev-odo').checked = !e; $('#ev-del').hidden=!e; $('#ev-del').dataset.c=''; $('#ev-del').textContent='Borrar';
+  $('#ev-caras').innerHTML=''; $('#ev-capas').innerHTML='';
+  $('#d-evo').showModal(); modoEvo();
+}
+$('#ev-cancel').onclick=()=>$('#d-evo').close();
+$('#d-evo').addEventListener('close', ()=>{ if (lienzo){ lienzo.destroy(); lienzo=null; } });
+$('#ev-del').onclick=async()=>{ const b=$('#ev-del'); if(!b.dataset.c){ b.dataset.c='1'; b.textContent='Tocá otra vez para borrar'; return; }
+  try{ await q(sb.from('evoluciones').delete().eq('id', evEdit.id)); $('#d-evo').close(); toast('Evolución borrada.'); pintarEvos(); }catch(err){ toast(errMsg(err), true); } };
+$('#f-evo').onsubmit=async ev=>{
+  ev.preventDefault(); const f=ev.target, t=f.tipo.value, piezas=piezasDe(f.piezas.value), op=t==='operatoria'||t==='carillas';
+  if (f.piezas.value.trim() && !piezas.length){ toast('Revisá las piezas: usá números FDI como 11, 26, 36.', true); return; }
+  const datos = {};
+  if (op){
+    Object.assign(datos, { aislamiento:f.aislamiento.value, base:f.base.value.trim(), tecnica:f.tecnica.value, pulido:f.pulido.value.trim(),
+      grabado:{ tipo:f.grab_tipo.value, acido:f.grab_acido.value.trim(), esmalte_s:+f.grab_esm.value||null, dentina_s:+f.grab_den.value||null },
+      adhesivo:{ nombre:f.adhesivo.value.trim(), fotocurado_s:+f.foto_s.value||null },
+      capas: evCapas.filter(c=>c.capa||c.resina||c.color||c.nota) });
+    if (t==='operatoria'){ datos.clase=f.clase.value; datos.caras=[...$$('#ev-caras input:checked')].map(x=>x.value); }
+    if (t==='carillas') datos.carilla={ tipo:f.car_tipo.value, preparacion:f.car_prep.value, cemento:f.car_cemento.value.trim(), color_final:f.car_color.value.trim() };
+    const dib = lienzo ? lienzo.get() : evDibujo; if (dib && ((dib.trazos||[]).length || (dib.textos||[]).length)) datos.dibujo = dib;
+    LS.set('rn_mat', { adhesivo:datos.adhesivo.nombre, acido:datos.grabado.acido, grab_tipo:datos.grabado.tipo, pulido:datos.pulido, resina:(datos.capas[0]||{}).resina||MAT().resina });
+  }
+  const row = { sede_id: fiPac.sede_id||sedeId, paciente_id: fiPac.id, profesional_id: f.profesional_id.value||null, fecha: f.fecha.value, tipo: t, piezas, texto: f.texto.value.trim(), datos };
+  try{
+    if (evEdit) await q(sb.from('evoluciones').update(row).eq('id', evEdit.id)); else await q(sb.from('evoluciones').insert(row));
+    if (op && $('#ev-odo').checked && piezas.length){
+      if (!odoCargado) await cargarOdo();
+      for (const p of piezas){
+        if (t==='carillas') ODO.aplicar(odo, { diente:p, tipo:'restauracion', caras:['V'], modo:'e' });
+        else ODO.aplicar(odo, { diente:p, tipo:'restauracion', caras: (datos.caras&&datos.caras.length)?datos.caras:[ODO.carasDe(p)[0]], modo:'e' });
+      }
+      odoGuardT=1; await guardarOdoYa(); pintarOdo();
+    }
+    $('#d-evo').close(); toast('Evolución guardada.'); pintarEvos();
+  }catch(err){ toast(errMsg(err), true); }
+};
+// dictado genérico para textareas
+function dictar(btn, area){
+  btn.onclick=()=>{
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR){ toast('Este navegador no permite dictar. Usá el micrófono del teclado.', true); area.focus(); return; }
+    if (btn._r){ btn._r.stop(); return; }
+    const r = new SR(); r.lang='es-AR'; r.continuous=true; r.interimResults=true; btn._r=r;
+    const base = area.value ? area.value.trim()+' ' : '';
+    r.onresult = ev=>{ let fin='', tmp=''; for (const x of ev.results){ if (x.isFinal) fin+=x[0].transcript+' '; else tmp+=x[0].transcript; } area.value = base+fin+tmp; area.dispatchEvent(new Event('input')); };
+    r.onend = ()=>{ btn._r=null; btn.classList.remove('on'); };
+    r.start(); btn.classList.add('on');
+  };
+}
+dictar($('#ev-mic'), $('#f-evo').texto);
 
 /* análisis con IA */
 let iaRes=[];

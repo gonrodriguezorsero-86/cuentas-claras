@@ -433,3 +433,28 @@ create policy "pacientes por sede subir" on storage.objects for insert to authen
 create policy "pacientes por sede borrar" on storage.objects for delete to authenticated
   using (bucket_id = 'pacientes' and public.puede_sede((storage.foldername(name))[1]));
 select (select count(*) from storage.buckets where id='pacientes') as bucket, (select count(*) from public.archivos) as archivos, (select count(*) from public.odontogramas) as odontogramas;
+-- Etapa 3b · Historia clínica (evoluciones)
+create table if not exists public.evoluciones (
+  id uuid primary key default gen_random_uuid(),
+  sede_id text not null references public.sedes(id),
+  paciente_id uuid not null references public.pacientes(id) on delete cascade,
+  profesional_id uuid references public.profesionales(id) on delete set null,
+  fecha date not null default current_date,
+  tipo text not null default 'consulta',
+  piezas text[] not null default '{}',
+  texto text not null default '',
+  datos jsonb not null default '{}'::jsonb,
+  creado_por uuid default auth.uid(),
+  creado timestamptz not null default now(),
+  actualizado timestamptz not null default now()
+);
+create index if not exists evoluciones_pac on public.evoluciones (paciente_id, fecha desc);
+alter table public.evoluciones enable row level security;
+drop policy if exists por_sede on public.evoluciones;
+create policy por_sede on public.evoluciones for all to authenticated
+  using (public.puede_sede(sede_id)) with check (public.puede_sede(sede_id));
+grant select, insert, update, delete on public.evoluciones to authenticated;
+grant all on public.evoluciones to service_role;
+drop trigger if exists evoluciones_actualizado on public.evoluciones;
+create trigger evoluciones_actualizado before update on public.evoluciones for each row execute function public.marcar_actualizado();
+select count(*) as evoluciones from public.evoluciones;

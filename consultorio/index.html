@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#FAFAF7">
 <link rel="manifest" href="manifest.webmanifest">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>
@@ -105,6 +106,48 @@ table.t tr.click{cursor:pointer}table.t tr.click:hover td{background:var(--soft)
 /* dialog */
 dialog{border:1px solid var(--line);border-radius:14px;padding:18px;width:min(560px,96vw);max-height:92vh;overflow:auto;background:#fff}
 dialog::backdrop{background:rgba(17,17,17,.45)}
+/* ficha clínica */
+dialog.ficha{width:min(1280px,98vw);height:94vh;max-height:94vh;padding:0;display:none;flex-direction:column}
+dialog.ficha[open]{display:flex}
+.fi-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 18px 10px;border-bottom:1px solid var(--line)}
+.fi-head h2{margin:0;font:600 20px var(--head)}.fi-head .hint{margin:0}
+.fi-tabs{display:flex;gap:2px;padding:8px 18px 0}
+.fi-tabs button{border:0;background:transparent;padding:8px 14px;border-bottom:2px solid transparent;cursor:pointer;color:var(--mut);font-weight:600}
+.fi-tabs button.on{color:var(--ink);border-bottom-color:var(--acc)}
+.fi-body{flex:1;overflow:auto;padding:12px 18px 18px}
+.odo-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.tool{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 9px;font-size:13px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.tool.on{border-color:var(--ink);background:var(--ink);color:#fff}
+.tool i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.odo-wrap{display:grid;grid-template-columns:1fr 270px;gap:12px;align-items:start}
+@media(max-width:900px){.odo-wrap{grid-template-columns:1fr}}
+.odo-box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px;overflow-x:auto}
+.odo-svg{width:100%;min-width:640px;display:block;user-select:none}
+.odo-svg .hit,.odo-svg .cara{cursor:pointer}
+@media(hover:hover){.odo-svg .cara:hover{fill:rgba(245,196,0,.35)}.odo-svg .hit:hover{fill:rgba(245,196,0,.10)}}
+.odo-n{font:600 9px var(--sans);fill:#77746c;cursor:pointer}.odo-n.sel{fill:#111}.odo-n.nota{text-decoration:underline}
+.odo-lbl{font:500 7px var(--sans);fill:#b3afa3}
+.odo-side .card{margin-bottom:10px}
+.sw{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.sw button{border:0;background:#fff;padding:6px 10px;font-size:13px;cursor:pointer}.sw button.on.r{background:#d32f2f;color:#fff}.sw button.on.e{background:#1e5bc6;color:#fff}.sw button.on.n{background:var(--ink);color:#fff}
+.item .t .mk,.mk{color:#fff}
+.mk{display:inline-block;font-size:12px;border-radius:6px;padding:1px 6px;margin:2px 3px 2px 0;color:#fff}.mk.r{background:#d32f2f}.mk.e{background:#1e5bc6}
+.voz{display:flex;gap:6px;align-items:flex-start}.voz textarea{flex:1}
+.mic.on{background:#d32f2f;color:#fff;border-color:#d32f2f;animation:pul 1.2s infinite}
+@keyframes pul{50%{opacity:.6}}
+.arch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.arch{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+.arch .th{aspect-ratio:4/3;background:#f1f0ea center/cover no-repeat;display:grid;place-items:center;font:600 22px var(--head);color:#9c978a;cursor:pointer}
+.arch .in{padding:7px 9px;font-size:12px;display:flex;flex-direction:column;gap:5px}
+.arch .in b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+.arch .ac{display:flex;gap:4px;flex-wrap:wrap}.arch .ac button{padding:4px 8px;font-size:12px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:var(--mut);margin-bottom:12px}
+.drop.on{border-color:var(--acc);background:var(--soft)}
+dialog.visor{width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;border-radius:0;background:#1d1c1a;display:none;flex-direction:column}dialog.visor[open]{display:flex}
+.visor .vb{display:flex;gap:6px;align-items:center;padding:10px;color:#fff;flex-wrap:wrap}
+.visor .vb button{background:#3a3834;color:#fff;border:0;border-radius:7px;padding:7px 11px;cursor:pointer}
+.visor .vc{flex:1;min-height:0}.visor img{max-width:100%;max-height:100%;margin:auto;display:block;object-fit:contain}
+.ia-r .item{align-items:flex-start}
 dialog form{display:flex;flex-direction:column;gap:12px}
 .dacts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .dacts .l{margin-right:auto;display:flex;gap:8px;flex-wrap:wrap}
@@ -342,7 +385,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
   <label>Notas<textarea name="notas" rows="2"></textarea></label>
   <div id="pa-hist-w" hidden><h3 style="margin-bottom:6px">Turnos</h3><div class="hist" id="pa-hist"></div></div>
   <div class="dacts">
-    <span class="l"><button type="button" class="btn wa" id="pa-wa">WhatsApp</button><button type="button" class="btn ghost" id="pa-turno">+ Turno</button></span>
+    <span class="l"><button type="button" class="btn wa" id="pa-wa">WhatsApp</button><button type="button" class="btn ghost" id="pa-turno">+ Turno</button><button type="button" class="btn ghost" id="pa-ficha">Ficha clínica</button></span>
     <button type="button" class="btn ghost" id="pa-cancel">Cerrar</button>
     <button class="btn">Guardar</button>
   </div>
@@ -350,6 +393,61 @@ dialog form{display:flex;flex-direction:column;gap:12px}
 <datalist id="dl-origen"><option>Instagram</option><option>Recomendación</option><option>Google</option><option>Paciente anterior</option><option>Otro profesional</option></datalist>
 
 <!-- DIALOGO LAB -->
+<dialog id="d-ficha" class="ficha">
+  <div class="fi-head">
+    <div style="flex:1;min-width:200px"><h2 id="fi-nom">Paciente</h2><p class="hint" id="fi-sub"></p></div>
+    <button type="button" class="btn ghost" id="fi-edit">Editar datos</button>
+    <button type="button" class="btn wa" id="fi-wa">WhatsApp</button>
+    <button type="button" class="btn ghost" id="fi-turno">+ Turno</button>
+    <button type="button" class="btn" id="fi-close">Cerrar</button>
+  </div>
+  <div class="fi-tabs" id="fi-tabs"><button data-t="odo" class="on">Odontograma</button><button data-t="arch">Fotos y escaneos <span id="fi-narch" class="hint"></span></button><button data-t="hist">Turnos</button></div>
+  <div class="fi-body">
+    <section id="fi-odo">
+      <div class="odo-bar">
+        <div class="sw" id="odo-den"><button data-v="adulto" class="on n">Adulto</button><button data-v="nino">Niño</button></div>
+        <div class="sw" id="odo-modo" title="Rojo: a realizar · Azul: existente"><button data-v="r" class="r">A realizar</button><button data-v="e" class="e">Existente</button><button data-v="" class="n on">Automático</button></div>
+        <span style="flex:1"></span>
+        <span class="hint" id="odo-est"></span>
+        <button type="button" class="btn ghost" id="odo-ia">Analizar foto (IA)</button>
+      </div>
+      <div class="odo-bar" id="odo-tools"></div>
+      <div class="odo-wrap">
+        <div>
+          <div class="odo-box" id="odo-box"></div>
+          <div class="card" style="margin-top:10px">
+            <h3>Dictar o escribir</h3>
+            <p class="hint">Ej: “caries mesio oclusal en el 16, corona en el 21 existente, falta el 36, endodoncia del 11”.</p>
+            <div class="voz" style="margin-top:6px"><textarea id="odo-txt" rows="2" placeholder="Tocá el micrófono y hablá, o escribí acá"></textarea><button type="button" class="btn ghost mic" id="odo-mic" title="Dictar">🎤</button><button type="button" class="btn" id="odo-int">Interpretar</button></div>
+            <div id="odo-prev" style="margin-top:6px"></div>
+          </div>
+        </div>
+        <div class="odo-side">
+          <div class="card" id="odo-det"><h3>Pieza</h3><p class="hint">Tocá un diente para ver el detalle y agregar una nota.</p></div>
+          <div class="card"><h3>Resumen</h3><div id="odo-res" style="margin-top:6px"></div></div>
+          <div class="card"><h3>Referencias</h3><p class="hint" style="line-height:1.7"><span class="mk r">rojo</span> a realizar · <span class="mk e">azul</span> existente<br>Caras: tocá la cara en el dibujo chico (oclusal). Corona, endodoncia, implante, etc.: tocá el diente.</p></div>
+        </div>
+      </div>
+    </section>
+    <section id="fi-arch" hidden>
+      <div class="drop" id="ar-drop">Arrastrá acá fotos, radiografías o escaneos (STL, PLY, OBJ o .zip de Medit) · <button type="button" class="link" id="ar-pick">o elegí archivos</button>
+        <div class="hint" style="margin-top:4px">Hasta 50 MB por archivo. <select id="ar-tipo" style="width:auto;display:inline-block;padding:3px 6px;font-size:12px"><option value="">Tipo automático</option><option value="foto">Foto</option><option value="rx">Radiografía</option><option value="escaneo">Escaneo</option><option value="documento">Documento</option></select></div>
+        <input type="file" id="ar-file" multiple hidden accept="image/*,.stl,.ply,.obj,.zip,.pdf,.dcm">
+        <p class="hint" id="ar-prog"></p>
+      </div>
+      <div class="arch-grid" id="ar-list"></div>
+    </section>
+    <section id="fi-hist" hidden><div id="fi-hlist"></div></section>
+  </div>
+</dialog>
+<dialog id="d-ia">
+  <h2>Análisis de foto con IA</h2>
+  <p class="hint">La IA sugiere lo que ve en la foto. <b>Son sugerencias:</b> revisalas vos antes de pasarlas al odontograma.</p>
+  <div id="ia-pick" style="margin:10px 0"></div>
+  <div id="ia-out" class="ia-r"></div>
+  <div class="dacts"><button type="button" class="btn ghost" id="ia-cancel">Cerrar</button><button type="button" class="btn" id="ia-apl" hidden>Pasar al odontograma</button></div>
+</dialog>
+<dialog class="visor" id="visor"><div class="vb"><b id="vi-nom" style="margin-right:auto"></b><span id="vi-vistas"><button data-v="frente">Frente</button><button data-v="arriba">Arriba</button><button data-v="abajo">Abajo</button><button data-v="izq">Izq.</button><button data-v="der">Der.</button></span><button id="vi-dl">Descargar</button><button id="vi-x">Cerrar ✕</button></div><div class="vc" id="vi-c"></div><p class="hint" id="vi-info" style="color:#aaa;padding:6px 10px;margin:0"></p></dialog>
 <dialog id="d-tarea"><form id="f-tarea">
   <h2 id="ta-ttl">Tarea</h2>
   <div class="acwrap" id="ta-pac-w"><label><span id="ta-pac-lab">Paciente (opcional)</span><input id="ta-pac-q" placeholder="Buscar paciente…" autocomplete="off"></label><div class="acl" id="ta-pac-l" hidden></div></div>
@@ -377,6 +475,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import CFG from './config.js';
+import * as ODO from './odontograma.js';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1029,7 +1128,7 @@ async function pintarPacientes(){
 }
 let pqT=null; $('#p-q').addEventListener('input',()=>{ clearTimeout(pqT); pqT=setTimeout(pintarPacientes,200); });
 $('#p-nuevo').onclick=()=>abrirPaciente(null);
-$('#p-list').addEventListener('click', e=>{ const tr=e.target.closest('tr[data-id]'); if(tr) abrirPaciente(S.pacientes.get(tr.dataset.id)); });
+$('#p-list').addEventListener('click', e=>{ const tr=e.target.closest('tr[data-id]'); if(tr) abrirFicha(S.pacientes.get(tr.dataset.id)); });
 
 let paEdit=null, paCb=null;
 const PCAMPOS=['nombre','apellido','telefono','fecha_nac','dni','email','obra_social','nro_afiliado','direccion','como_nos_conocio','notas'];
@@ -1039,7 +1138,7 @@ async function abrirPaciente(p, pre, cb){
   PCAMPOS.forEach(k=>f[k].value = src[k] || '');
   f.acepta_whatsapp.checked = p ? !!p.acepta_whatsapp : true;
   $('#pa-ttl').textContent = p ? nombrePac(p) : 'Paciente nuevo';
-  $('#pa-wa').hidden=!p; $('#pa-turno').hidden=!p;
+  $('#pa-wa').hidden=!p; $('#pa-turno').hidden=!p; $('#pa-ficha').hidden=!p;
   $('#pa-hist-w').hidden=!p; $('#pa-hist').innerHTML='';
   if ($('#d-turno').open && cb) $('#d-turno').close();
   $('#d-pac').showModal();
@@ -1059,10 +1158,247 @@ $('#f-pac').onsubmit = async e=>{
   try{
     const p = paEdit ? await q(sb.from('pacientes').update(row).eq('id', paEdit.id).select().single()) : await q(sb.from('pacientes').insert({...row, sede_id:sedeId}).select().single());
     S.pacientes.set(p.id, p); cumplesCache=null;
+    if ($('#d-ficha').open && fiPac && fiPac.id===p.id){ fiPac=p; pintarFichaHead(); }
     $('#d-pac').close(); toast(paEdit?'Paciente actualizado.':'Paciente creado.');
     if (paCb){ const cb=paCb; paCb=null; cb(p); }
     else if (vista==='pacientes') pintarPacientes(); else if (vista==='agenda') pintarAgenda();
   }catch(err){ toast(errMsg(err), true); }
+};
+
+/* ---------- FICHA CLÍNICA ---------- */
+let fiPac=null, fiTab='odo', odo={ denticion:'adulto', dientes:{} }, odoSel=null, odoTool='caries', odoModo='', odoGuardT=null, odoCargado=false;
+const edadDe = f => { if(!f) return ''; const h=new Date(), n=new Date(f+'T12:00:00'); let e=h.getFullYear()-n.getFullYear(); if (h<new Date(h.getFullYear(), n.getMonth(), n.getDate())) e--; return e+' años'; };
+function pintarFichaHead(){
+  const p=fiPac; $('#fi-nom').textContent=nombrePac(p);
+  $('#fi-sub').textContent=[edadDe(p.fecha_nac), p.dni?'DNI '+p.dni:'', p.obra_social, p.telefono].filter(Boolean).join(' · ');
+  $('#fi-wa').hidden=!p.telefono;
+}
+async function abrirFicha(p, tab){
+  if (!p) return; fiPac=p; odoSel=null; odoCargado=false;
+  pintarFichaHead(); $('#odo-txt').value=''; $('#odo-prev').innerHTML=''; $('#odo-est').textContent='';
+  $('#d-ficha').showModal(); fichaTab(tab||fiTab||'odo');
+  cargarOdo(); contarArchivos();
+}
+function fichaTab(t){ fiTab=t; $$('#fi-tabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===t)); ['odo','arch','hist'].forEach(x=>$('#fi-'+x).hidden = x!==t);
+  if (t==='arch') pintarArchivos(); if (t==='hist') pintarFichaHist(); }
+$('#fi-tabs').addEventListener('click', e=>{ const b=e.target.closest('button[data-t]'); if(b) fichaTab(b.dataset.t); });
+$('#fi-close').onclick=()=>{ guardarOdoYa(); $('#d-ficha').close(); };
+$('#d-ficha').addEventListener('cancel', ()=>guardarOdoYa());
+$('#fi-edit').onclick=()=>abrirPaciente(fiPac);
+$('#pa-ficha').onclick=()=>{ const p=paEdit; $('#d-pac').close(); abrirFicha(p); };
+$('#fi-wa').onclick=()=>abrirWa(fiPac, 'Hola '+(fiPac.nombre||'')+'! ');
+$('#fi-turno').onclick=()=>{ const p=fiPac; guardarOdoYa(); $('#d-ficha').close(); abrirTurno(null,{ paciente:p, fecha:ymd(new Date()) }); };
+async function pintarFichaHist(){
+  const el=$('#fi-hlist'); el.innerHTML='<p class="hint">Cargando…</p>';
+  try{ const tur=await q(sb.from('turnos').select('*').eq('paciente_id', fiPac.id).order('inicio',{ascending:false}).limit(100));
+    el.innerHTML = tur.length ? tur.map(t=>`<div class="item"><div class="t"><b>${esc(new Date(t.inicio).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}))} · ${esc(t.motivo||'Turno')}</b><span>${esc(nombreProf(profById(t.profesional_id)))}${t.notas?' · '+esc(t.notas):''}</span></div><span class="pill ${t.estado==='atendido'||t.estado==='confirmado'?'ok':(t.estado==='ausente'?'bad':'')}">${ESTADOS[t.estado]}</span></div>`).join('') : '<p class="hint">Sin turnos todavía.</p>';
+  }catch(e){ el.innerHTML='<p class="hint">'+esc(errMsg(e))+'</p>'; }
+}
+
+/* odontograma */
+const HERR = [['caries','Caries','r'],['restauracion','Restauración','e'],['sellante','Sellante','e'],['corona','Corona','e'],['endodoncia','Endodoncia','e'],['perno','Perno','e'],['implante','Implante','e'],['protesis','Prótesis','e'],['fractura','Fractura','r'],['extraccion','Extracción','r'],['ausente','Ausente','e'],['borrar','Borrar','']];
+$('#odo-tools').innerHTML = HERR.map(([k,n,m])=>`<button type="button" class="tool${k===odoTool?' on':''}" data-k="${k}">${m?`<i style="background:${ODO.COLOR[m]}"></i>`:'✕'} ${n}</button>`).join('');
+$('#odo-tools').addEventListener('click', e=>{ const b=e.target.closest('[data-k]'); if(!b) return; odoTool=b.dataset.k; $$('#odo-tools .tool').forEach(x=>x.classList.toggle('on', x===b)); });
+$('#odo-modo').addEventListener('click', e=>{ const b=e.target.closest('[data-v]'); if(!b) return; odoModo=b.dataset.v; $$('#odo-modo button').forEach(x=>x.classList.toggle('on', x===b)); });
+$('#odo-den').addEventListener('click', e=>{ const b=e.target.closest('[data-v]'); if(!b) return; odo.denticion=b.dataset.v; marcarDen(); pintarOdo(); guardarOdo(); });
+function marcarDen(){ $$('#odo-den button').forEach(x=>{ const on=x.dataset.v===(odo.denticion||'adulto'); x.classList.toggle('on', on); x.classList.toggle('n', on); }); }
+async function cargarOdo(){
+  $('#odo-box').innerHTML='<p class="hint" style="padding:20px">Cargando…</p>';
+  try{ const r = await q(sb.from('odontogramas').select('*').eq('paciente_id', fiPac.id).maybeSingle());
+    odo = (r && r.datos && r.datos.dientes) ? r.datos : { denticion: (fiPac.fecha_nac && (new Date().getFullYear()-+fiPac.fecha_nac.slice(0,4))<6) ? 'nino' : 'adulto', dientes:{} };
+    $('#odo-est').textContent = r ? 'Actualizado '+new Date(r.actualizado).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
+    odoCargado=true;
+  }catch(e){ odo={ denticion:'adulto', dientes:{} }; odoCargado=false; toast(errMsg(e), true); }
+  marcarDen(); pintarOdo();
+}
+function pintarOdo(){
+  $('#odo-box').innerHTML = ODO.svgOdontograma(odo, { sel: odoSel });
+  const res = ODO.resumen(odo);
+  $('#odo-res').innerHTML = res.length ? res.map(r=>`<div class="item" data-d="${r.diente}" style="cursor:pointer"><div class="t"><b>${r.diente}</b><span>${r.partes.map(x=>`<span class="mk ${x.m}">${esc(x.txt)}</span>`).join('')}${r.nota?' '+esc(r.nota):''}</span></div></div>`).join('') : '<p class="hint">Sin marcas todavía.</p>';
+  pintarDet();
+}
+function pintarDet(){
+  const el=$('#odo-det');
+  if (!odoSel){ el.innerHTML='<h3>Pieza</h3><p class="hint">Tocá un diente para ver el detalle y agregar una nota.</p>'; return; }
+  const dd=(odo.dientes||{})[odoSel]||{}, r=ODO.resumen({dientes:{[odoSel]:dd}})[0];
+  el.innerHTML = `<h3>Pieza ${odoSel}</h3><div style="margin:6px 0">${r&&r.partes.length?r.partes.map(x=>`<span class="mk ${x.m}">${esc(x.txt)}</span>`).join(''):'<span class="hint">Sin marcas.</span>'}</div>
+    <label style="font-size:13px">Nota<textarea id="odo-nota" rows="2">${esc(dd.nota||'')}</textarea></label>
+    <div style="display:flex;gap:6px;margin-top:6px"><button type="button" class="btn ghost" id="odo-limpiar" style="padding:6px 10px">Limpiar pieza</button></div>`;
+  $('#odo-nota').oninput = e=>{ odo.dientes=odo.dientes||{}; const d=odo.dientes[odoSel]=odo.dientes[odoSel]||{marcas:[],caras:{}}; d.nota=e.target.value; if(!d.nota && !d.marcas.length && !Object.keys(d.caras||{}).length) delete odo.dientes[odoSel]; guardarOdo(); };
+  $('#odo-nota').onchange = ()=>pintarOdo();
+  $('#odo-limpiar').onclick = ()=>{ ODO.aplicar(odo,{diente:odoSel,tipo:'borrar'}); pintarOdo(); guardarOdo(); };
+}
+$('#odo-box').addEventListener('click', e=>{
+  const z=e.target.closest('[data-d]'); if(!z) return;
+  const d=z.dataset.d, f=z.dataset.f; odoSel=d;
+  if (e.target.classList.contains('odo-n')){ pintarOdo(); return; }
+  const modo = odoModo || undefined;
+  if (odoTool==='borrar'){ if (f){ const dd=(odo.dientes||{})[d]; if(dd&&dd.caras) delete dd.caras[f]; if(dd&&!dd.marcas.length&&!Object.keys(dd.caras).length&&!dd.nota) delete odo.dientes[d]; } else ODO.aplicar(odo,{diente:d,tipo:'borrar'}); }
+  else if (ODO.CARA_T[odoTool]){ if (!f){ pintarOdo(); toast('Para '+ODO.CARA_T[odoTool].n.toLowerCase()+' tocá la cara en el dibujo chico de abajo del diente.'); return; } ODO.aplicar(odo,{diente:d,tipo:odoTool,caras:[f],modo,toggle:true}); }
+  else ODO.aplicar(odo,{diente:d,tipo:odoTool,modo,toggle:true});
+  pintarOdo(); guardarOdo();
+});
+$('#odo-res').addEventListener('click', e=>{ const it=e.target.closest('[data-d]'); if(it){ odoSel=it.dataset.d; pintarOdo(); } });
+function guardarOdo(){ clearTimeout(odoGuardT); $('#odo-est').textContent='Guardando…'; odoGuardT=setTimeout(guardarOdoYa, 700); }
+async function guardarOdoYa(){
+  if (!odoGuardT || !fiPac) return; clearTimeout(odoGuardT); odoGuardT=null;
+  try{ await q(sb.from('odontogramas').upsert({ paciente_id:fiPac.id, sede_id:fiPac.sede_id||sedeId, datos:odo })); $('#odo-est').textContent='Guardado ✓'; }
+  catch(e){ $('#odo-est').textContent='No se pudo guardar'; toast(errMsg(e), true); }
+}
+// voz
+let reco=null, recoTxt='';
+$('#odo-mic').onclick=()=>{
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR){ toast('Este navegador no permite dictar. Usá el micrófono del teclado del celular, o escribilo.', true); $('#odo-txt').focus(); return; }
+  if (reco){ reco.stop(); return; }
+  reco = new SR(); reco.lang='es-AR'; reco.continuous=true; reco.interimResults=true;
+  const base = $('#odo-txt').value ? $('#odo-txt').value.trim()+', ' : '';
+  recoTxt='';
+  reco.onresult = ev=>{ let fin='', tmp=''; for (const r of ev.results){ if (r.isFinal) fin+=r[0].transcript+' '; else tmp+=r[0].transcript; } recoTxt=fin; $('#odo-txt').value = base+fin+tmp; };
+  reco.onerror = ev=>{ if (ev.error==='not-allowed') toast('Hay que permitir el micrófono para dictar.', true); };
+  reco.onend = ()=>{ reco=null; $('#odo-mic').classList.remove('on'); interpretarOdo(); };
+  reco.start(); $('#odo-mic').classList.add('on');
+};
+let odoPend=[];
+function interpretarOdo(){
+  odoPend = ODO.interpretarVoz($('#odo-txt').value);
+  $('#odo-prev').innerHTML = odoPend.length
+    ? `<p class="hint">Entendí esto. Destildá lo que no va:</p>${odoPend.map((a,i)=>`<label class="chk" style="font-size:13px"><input type="checkbox" data-i="${i}" checked> ${esc(ODO.describirAccion(a))}</label>`).join('')}<div style="margin-top:6px"><button type="button" class="btn" id="odo-ok">Pasar al odontograma</button></div>`
+    : ($('#odo-txt').value.trim() ? '<p class="hint">No entendí ninguna pieza. Decí el número del diente (por ejemplo 16) y qué tiene.</p>' : '');
+  const ok=$('#odo-ok'); if (ok) ok.onclick=()=>{
+    const sel=[...$$('#odo-prev input[data-i]')].filter(x=>x.checked).map(x=>odoPend[+x.dataset.i]);
+    sel.forEach(a=>ODO.aplicar(odo,a)); odoSel = sel.length ? sel[sel.length-1].diente : odoSel;
+    pintarOdo(); guardarOdo(); $('#odo-txt').value=''; $('#odo-prev').innerHTML=''; toast(sel.length+' '+(sel.length===1?'marca agregada':'marcas agregadas')+'.');
+  };
+}
+$('#odo-int').onclick=interpretarOdo;
+
+/* fotos y escaneos */
+const EXT_ESC=['stl','ply','obj','zip','dcm'], esImg = n => /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(n);
+const extDe = n => (n.split('.').pop()||'').toLowerCase();
+const kb = b => b>1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB';
+async function contarArchivos(){ try{ const { count } = await sb.from('archivos').select('id',{count:'exact', head:true}).eq('paciente_id', fiPac.id); $('#fi-narch').textContent = count ? '('+count+')' : ''; }catch(e){} }
+async function pintarArchivos(){
+  const el=$('#ar-list'); el.innerHTML='<p class="hint">Cargando…</p>';
+  try{
+    S.arch = await q(sb.from('archivos').select('*').eq('paciente_id', fiPac.id).order('creado',{ascending:false}));
+    const fotos = S.arch.filter(a=>a.tipo==='foto'||a.tipo==='rx');
+    let urls={};
+    if (fotos.length){ const { data } = await sb.storage.from('pacientes').createSignedUrls(fotos.map(a=>a.ruta), 3600); (data||[]).forEach(x=>{ if(x.signedUrl) urls[x.path]=x.signedUrl; }); }
+    el.innerHTML = S.arch.length ? S.arch.map(a=>{ const u=urls[a.ruta], img=(a.tipo==='foto'||a.tipo==='rx')&&u&&esImg(a.nombre);
+      return `<div class="arch" data-id="${a.id}"><div class="th" data-a="ver" style="${img?`background-image:url('${u}')`:''}">${img?'':esc(extDe(a.nombre).toUpperCase()||'?')}</div>
+        <div class="in"><b title="${esc(a.nombre)}">${esc(a.nombre)}</b><span class="hint">${{foto:'Foto',rx:'Radiografía',escaneo:'Escaneo',documento:'Documento',otro:'Archivo'}[a.tipo]} · ${kb(a.tamano)} · ${new Date(a.creado).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})}</span>
+        <div class="ac"><button class="btn ghost" data-a="ver">${a.tipo==='escaneo'&&['stl','ply','obj','zip'].includes(extDe(a.nombre))?'Ver 3D':'Abrir'}</button>${a.tipo==='foto'&&esImg(a.nombre)?'<button class="btn ghost" data-a="ia">IA</button>':''}<button class="btn ghost" data-a="del">Borrar</button></div></div></div>`; }).join('')
+      : '<p class="hint">Todavía no hay fotos ni escaneos de este paciente.</p>';
+    $('#fi-narch').textContent = S.arch.length ? '('+S.arch.length+')' : '';
+  }catch(e){ el.innerHTML='<p class="hint">'+esc(errMsg(e))+'</p>'; }
+}
+$('#ar-pick').onclick=()=>$('#ar-file').click();
+$('#ar-file').onchange=e=>{ subirArchivos([...e.target.files]); e.target.value=''; };
+['dragenter','dragover'].forEach(ev=>$('#ar-drop').addEventListener(ev, e=>{ e.preventDefault(); $('#ar-drop').classList.add('on'); }));
+['dragleave','drop'].forEach(ev=>$('#ar-drop').addEventListener(ev, e=>{ e.preventDefault(); $('#ar-drop').classList.remove('on'); }));
+$('#ar-drop').addEventListener('drop', e=>subirArchivos([...e.dataTransfer.files]));
+async function achicarFoto(file){
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 2.5e6) return file;
+  try{
+    const bmp = await createImageBitmap(file); const k = Math.min(1, 3000/Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas'); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k); c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+    const b = await new Promise(r=>c.toBlob(r,'image/jpeg',.88)); return b && b.size<file.size ? new File([b], file.name.replace(/\.\w+$/,'')+'.jpg', {type:'image/jpeg'}) : file;
+  }catch(e){ return file; }
+}
+async function subirArchivos(files){
+  if (!files.length || !fiPac) return;
+  const prog=$('#ar-prog'), tipoSel=$('#ar-tipo').value; let ok=0;
+  for (let i=0;i<files.length;i++){
+    let f=files[i]; const ext=extDe(f.name);
+    const tipo = tipoSel || (EXT_ESC.includes(ext) ? 'escaneo' : (f.type.startsWith('image/')||esImg(f.name)) ? 'foto' : ext==='pdf' ? 'documento' : 'otro');
+    if (tipo==='foto') f = await achicarFoto(f);
+    if (f.size > 50*1048576){ toast(`${f.name} pesa ${kb(f.size)}: el máximo es 50 MB. Si es un escaneo, exportalo comprimido (.zip) o en STL.`, true); continue; }
+    prog.textContent=`Subiendo ${i+1} de ${files.length}: ${f.name}…`;
+    const limpio = f.name.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w.\-]+/g,'_').slice(-80);
+    const sede = fiPac.sede_id || sedeId, ruta = `${sede}/${fiPac.id}/${Date.now()}-${Math.random().toString(36).slice(2,6)}-${limpio}`;
+    try{
+      const { error } = await sb.storage.from('pacientes').upload(ruta, f, { contentType: f.type || 'application/octet-stream', upsert:false });
+      if (error) throw error;
+      await q(sb.from('archivos').insert({ sede_id:sede, paciente_id:fiPac.id, tipo, nombre:f.name, ruta, tamano:f.size, mime:f.type||'' }));
+      ok++;
+    }catch(e){ toast(f.name+': '+errMsg(e), true); }
+  }
+  prog.textContent = ok ? `Listo: ${ok} ${ok===1?'archivo subido':'archivos subidos'}.` : '';
+  pintarArchivos();
+}
+async function bajar(a){ const { data, error } = await sb.storage.from('pacientes').download(a.ruta); if (error) throw error; return data; }
+let visor=null, visorArch=null;
+$('#ar-list').addEventListener('click', async e=>{
+  const b=e.target.closest('[data-a]'), c=e.target.closest('.arch'); if(!b||!c) return;
+  const a=(S.arch||[]).find(x=>x.id===c.dataset.id); if(!a) return;
+  try{
+    if (b.dataset.a==='del'){ if (b.dataset.c!=='1'){ b.dataset.c='1'; b.textContent='¿Seguro?'; return; }
+      await sb.storage.from('pacientes').remove([a.ruta]); await q(sb.from('archivos').delete().eq('id', a.id)); toast('Borrado.'); pintarArchivos(); return; }
+    if (b.dataset.a==='ia'){ abrirIA(a); return; }
+    if (b.dataset.a==='ver') await verArchivo(a);
+  }catch(err){ toast(errMsg(err), true); }
+});
+async function verArchivo(a){
+  const ext=extDe(a.nombre); visorArch=a;
+  if (a.tipo==='escaneo' && ['stl','ply','obj','zip'].includes(ext)){
+    if(!$('#visor').open) $('#visor').showModal(); $('#vi-nom').textContent=a.nombre; $('#vi-vistas').hidden=false; $('#vi-info').textContent='Cargando el escaneo…'; $('#vi-c').innerHTML='';
+    try{
+      const [blob, V] = await Promise.all([bajar(a), import('./visor3d.js')]);
+      visor = await V.abrirVisor($('#vi-c'), { nombre:a.nombre, buf: await blob.arrayBuffer(), onInfo: i=>{ $('#vi-info').textContent = `${i.capas.join(' · ')} · ${i.mm.join(' × ')} mm · arrastrá para girar, rueda o pellizco para acercar.`; } });
+    }catch(e){ $('#vi-info').textContent='No se pudo abrir: '+errMsg(e); }
+    return;
+  }
+  const { data } = await sb.storage.from('pacientes').createSignedUrl(a.ruta, 3600);
+  if (!data) throw new Error('No se pudo abrir el archivo.');
+  if (esImg(a.nombre)){ if(!$('#visor').open) $('#visor').showModal(); $('#vi-nom').textContent=a.nombre; $('#vi-vistas').hidden=true; $('#vi-info').textContent=a.nota||''; $('#vi-c').innerHTML=`<img src="${data.signedUrl}" alt="">`; return; }
+  window.open(data.signedUrl, '_blank', 'noopener');
+}
+$('#vi-x').onclick=()=>$('#visor').close();
+$('#visor').addEventListener('close', ()=>{ if(visor){ visor.cerrar(); visor=null; } $('#vi-c').innerHTML=''; });
+$('#vi-vistas').addEventListener('click', e=>{ const b=e.target.closest('[data-v]'); if(b&&visor) visor.vista(b.dataset.v); });
+$('#vi-dl').onclick=async()=>{ if(!visorArch) return; const { data } = await sb.storage.from('pacientes').createSignedUrl(visorArch.ruta, 600, { download: visorArch.nombre }); if (data) location.href=data.signedUrl; };
+
+/* análisis con IA */
+let iaRes=[];
+async function aJpegBase64(blob){
+  const bmp = await createImageBitmap(blob); const k=Math.min(1, 1568/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas'); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k); c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+  return c.toDataURL('image/jpeg',.85).split(',')[1];
+}
+async function abrirIA(a){
+  $('#ia-out').innerHTML=''; $('#ia-apl').hidden=true; iaRes=[];
+  const fotos=(S.arch||[]).filter(x=>x.tipo==='foto'&&esImg(x.nombre));
+  $('#ia-pick').innerHTML = a ? `<p class="hint">Foto: <b>${esc(a.nombre)}</b></p>` : `<label style="font-size:13px">Elegí una foto del paciente o subí una nueva<select id="ia-sel"><option value="">— Subir una foto nueva —</option>${fotos.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('')}</select></label><input type="file" id="ia-file" accept="image/*" style="margin-top:6px"><div style="margin-top:8px"><button type="button" class="btn" id="ia-go">Analizar</button></div>`;
+  $('#d-ia').showModal();
+  if (a) return correrIA(await bajar(a));
+  $('#ia-go').onclick=async()=>{
+    const id=$('#ia-sel').value, f=$('#ia-file').files[0];
+    try{ if (id) return correrIA(await bajar(fotos.find(x=>x.id===id))); if (f){ await subirArchivos([f]); return correrIA(f); } toast('Elegí o subí una foto.', true); }catch(e){ toast(errMsg(e), true); }
+  };
+}
+$('#odo-ia').onclick=async()=>{ if(!S.arch||!S.arch.length||S.arch[0].paciente_id!==fiPac.id){ try{ S.arch=await q(sb.from('archivos').select('*').eq('paciente_id', fiPac.id).order('creado',{ascending:false})); }catch(e){ S.arch=[]; } } abrirIA(null); };
+$('#ia-cancel').onclick=()=>$('#d-ia').close();
+async function correrIA(blob){
+  const out=$('#ia-out'); out.innerHTML='<p class="hint">Analizando la foto… (tarda unos segundos)</p>';
+  try{
+    const imagen = await aJpegBase64(blob);
+    const { data, error } = await sb.functions.invoke('ia', { body:{ accion:'odontograma', imagen, media_type:'image/jpeg', denticion: odo.denticion||'adulto' } });
+    if (error){ let m=error.message; try{ const j=await error.context.json(); m=j.error||m; }catch(e){} throw new Error(m); }
+    if (data && data.error) throw new Error(data.error);
+    iaRes = (data.hallazgos||[]).filter(h=>ODO.VALIDOS.has(String(h.diente)) && (ODO.CARA_T[h.tipo]||ODO.DIENTE_T[h.tipo]));
+    const otros = (data.hallazgos||[]).filter(h=>!iaRes.includes(h));
+    out.innerHTML = `${data.vista?`<p class="hint">Vista: ${esc(data.vista)}${data.calidad?' · calidad: '+esc(data.calidad):''}</p>`:''}
+      ${iaRes.length?iaRes.map((h,i)=>`<label class="item chk" style="font-size:13px"><input type="checkbox" data-i="${i}" ${h.confianza>=.6?'checked':''}> <span><b>${esc(ODO.describirAccion({diente:String(h.diente),tipo:h.tipo,caras:h.caras||[],modo:h.modo||((ODO.CARA_T[h.tipo]||ODO.DIENTE_T[h.tipo]).modo)}))}</b><br><span class="hint">${esc(h.descripcion||'')} · confianza ${Math.round((h.confianza||0)*100)}%</span></span></label>`).join(''):'<p class="hint">No encontró nada para marcar con seguridad.</p>'}
+      ${otros.length?`<p class="hint" style="margin-top:6px">Otras observaciones: ${otros.map(h=>esc((h.diente?h.diente+': ':'')+(h.descripcion||h.tipo))).join(' · ')}</p>`:''}
+      ${data.observaciones?`<p class="hint" style="margin-top:6px">${esc(data.observaciones)}</p>`:''}`;
+    $('#ia-apl').hidden=!iaRes.length;
+  }catch(e){ out.innerHTML=`<p class="hint" style="color:var(--bad)">${esc(e.message)}</p>`; }
+}
+$('#ia-apl').onclick=()=>{
+  const sel=[...$$('#ia-out input[data-i]')].filter(x=>x.checked).map(x=>iaRes[+x.dataset.i]);
+  sel.forEach(h=>ODO.aplicar(odo,{ diente:String(h.diente), tipo:h.tipo, caras:h.caras||[], modo:h.modo||undefined }));
+  $('#d-ia').close(); fichaTab('odo'); pintarOdo(); guardarOdo(); toast(sel.length+' '+(sel.length===1?'marca agregada':'marcas agregadas')+' desde la foto.');
 };
 
 /* ---------- LABORATORIO ---------- */

@@ -381,3 +381,55 @@ alter table public.tareas add column if not exists estado_lab text not null defa
 alter table public.tareas add column if not exists pedido_en date;
 alter table public.tareas add column if not exists lab_id text;
 select column_name from information_schema.columns where table_name='tareas' and column_name in ('laboratorio','estado_lab','pedido_en','lab_id') order by 1;
+-- Etapa 3 · Ficha clínica: fotos, escaneos y odontograma
+create table if not exists public.archivos (
+  id uuid primary key default gen_random_uuid(),
+  sede_id text not null references public.sedes(id),
+  paciente_id uuid not null references public.pacientes(id) on delete cascade,
+  tipo text not null default 'foto' check (tipo in ('foto','escaneo','rx','documento','otro')),
+  nombre text not null default '',
+  ruta text not null unique,
+  tamano bigint not null default 0,
+  mime text not null default '',
+  nota text not null default '',
+  creado_por uuid default auth.uid(),
+  creado timestamptz not null default now()
+);
+create index if not exists archivos_pac on public.archivos (paciente_id, creado desc);
+alter table public.archivos enable row level security;
+drop policy if exists por_sede on public.archivos;
+create policy por_sede on public.archivos for all to authenticated
+  using (public.puede_sede(sede_id)) with check (public.puede_sede(sede_id));
+grant select, insert, update, delete on public.archivos to authenticated;
+grant all on public.archivos to service_role;
+
+create table if not exists public.odontogramas (
+  paciente_id uuid primary key references public.pacientes(id) on delete cascade,
+  sede_id text not null references public.sedes(id),
+  datos jsonb not null default '{}'::jsonb,
+  actualizado timestamptz not null default now(),
+  actualizado_por uuid default auth.uid()
+);
+alter table public.odontogramas enable row level security;
+drop policy if exists por_sede on public.odontogramas;
+create policy por_sede on public.odontogramas for all to authenticated
+  using (public.puede_sede(sede_id)) with check (public.puede_sede(sede_id));
+grant select, insert, update, delete on public.odontogramas to authenticated;
+grant all on public.odontogramas to service_role;
+drop trigger if exists odontogramas_actualizado on public.odontogramas;
+create trigger odontogramas_actualizado before update on public.odontogramas for each row execute function public.marcar_actualizado();
+
+-- archivos privados: carpeta = sede/paciente/archivo
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('pacientes', 'pacientes', false, 52428800)
+on conflict (id) do update set public = false, file_size_limit = 52428800;
+drop policy if exists "pacientes por sede ver" on storage.objects;
+drop policy if exists "pacientes por sede subir" on storage.objects;
+drop policy if exists "pacientes por sede borrar" on storage.objects;
+create policy "pacientes por sede ver" on storage.objects for select to authenticated
+  using (bucket_id = 'pacientes' and public.puede_sede((storage.foldername(name))[1]));
+create policy "pacientes por sede subir" on storage.objects for insert to authenticated
+  with check (bucket_id = 'pacientes' and public.puede_sede((storage.foldername(name))[1]));
+create policy "pacientes por sede borrar" on storage.objects for delete to authenticated
+  using (bucket_id = 'pacientes' and public.puede_sede((storage.foldername(name))[1]));
+select (select count(*) from storage.buckets where id='pacientes') as bucket, (select count(*) from public.archivos) as archivos, (select count(*) from public.odontogramas) as odontogramas;

@@ -458,3 +458,79 @@ grant all on public.evoluciones to service_role;
 drop trigger if exists evoluciones_actualizado on public.evoluciones;
 create trigger evoluciones_actualizado before update on public.evoluciones for each row execute function public.marcar_actualizado();
 select count(*) as evoluciones from public.evoluciones;
+-- Etapa 4 · Aranceles, planes de tratamiento y pagos
+create table if not exists public.prestaciones (
+  id uuid primary key default gen_random_uuid(),
+  sede_id text not null references public.sedes(id),
+  nombre text not null,
+  categoria text not null default '',
+  precio numeric not null default 0,
+  activo boolean not null default true,
+  orden int not null default 0,
+  creado timestamptz not null default now(),
+  actualizado timestamptz not null default now()
+);
+create index if not exists prestaciones_sede on public.prestaciones (sede_id, orden);
+create table if not exists public.planes (
+  id uuid primary key default gen_random_uuid(),
+  sede_id text not null references public.sedes(id),
+  paciente_id uuid not null references public.pacientes(id) on delete cascade,
+  profesional_id uuid references public.profesionales(id) on delete set null,
+  titulo text not null default 'Plan de tratamiento',
+  estado text not null default 'borrador' check (estado in ('borrador','presentado','aceptado','en_curso','terminado','rechazado')),
+  items jsonb not null default '[]'::jsonb,
+  descuento numeric not null default 0,
+  notas text not null default '',
+  validez date,
+  creado_por uuid default auth.uid(),
+  creado timestamptz not null default now(),
+  actualizado timestamptz not null default now()
+);
+create index if not exists planes_pac on public.planes (paciente_id, creado desc);
+create table if not exists public.pagos (
+  id uuid primary key default gen_random_uuid(),
+  sede_id text not null references public.sedes(id),
+  paciente_id uuid not null references public.pacientes(id) on delete cascade,
+  plan_id uuid references public.planes(id) on delete set null,
+  fecha date not null default current_date,
+  monto numeric not null check (monto <> 0),
+  medio text not null default 'Efectivo',
+  concepto text not null default '',
+  numero bigint generated always as identity,
+  creado_por uuid default auth.uid(),
+  creado timestamptz not null default now()
+);
+create index if not exists pagos_pac on public.pagos (paciente_id, fecha desc);
+create index if not exists pagos_sede on public.pagos (sede_id, fecha desc);
+do $$ declare t text; begin
+  foreach t in array array['prestaciones','planes','pagos'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists por_sede on public.%I', t);
+    execute format('grant select, insert, update, delete on public.%I to authenticated', t);
+    execute format('grant all on public.%I to service_role', t);
+  end loop;
+end $$;
+create policy por_sede on public.planes for all to authenticated using (public.puede_sede(sede_id)) with check (public.puede_sede(sede_id));
+create policy por_sede on public.pagos for all to authenticated using (public.puede_sede(sede_id)) with check (public.puede_sede(sede_id));
+-- aranceles: todos los de la sede los ven, solo administradores los cambian
+drop policy if exists ver on public.prestaciones; drop policy if exists editar on public.prestaciones;
+create policy ver on public.prestaciones for select to authenticated using (public.puede_sede(sede_id));
+create policy editar on public.prestaciones for all to authenticated using (public.es_admin()) with check (public.es_admin());
+drop trigger if exists prestaciones_actualizado on public.prestaciones;
+create trigger prestaciones_actualizado before update on public.prestaciones for each row execute function public.marcar_actualizado();
+drop trigger if exists planes_actualizado on public.planes;
+create trigger planes_actualizado before update on public.planes for each row execute function public.marcar_actualizado();
+-- lista inicial de prestaciones (sin precio) para cada sede, solo si está vacía
+insert into public.prestaciones (sede_id, nombre, categoria, orden)
+select s.id, x.nombre, x.cat, x.ord from public.sedes s
+cross join (values
+ ('Consulta / diagnóstico','Diagnóstico',1),('Radiografía periapical','Diagnóstico',2),('Limpieza y profilaxis','Prevención',3),('Fluoración','Prevención',4),('Sellante (por pieza)','Prevención',5),
+ ('Operatoria simple (1 cara)','Operatoria',10),('Operatoria compuesta (2 caras)','Operatoria',11),('Operatoria compleja (3 o más caras)','Operatoria',12),('Reconstrucción con perno','Operatoria',13),
+ ('Carilla de resina directa','Estética',20),('Carilla cerámica','Estética',21),('Blanqueamiento','Estética',22),
+ ('Endodoncia unirradicular','Endodoncia',30),('Endodoncia birradicular','Endodoncia',31),('Endodoncia multirradicular','Endodoncia',32),
+ ('Extracción simple','Cirugía',40),('Extracción de tercer molar','Cirugía',41),
+ ('Corona','Prótesis',50),('Corona sobre implante','Prótesis',51),('Incrustación','Prótesis',52),('Prótesis removible','Prótesis',53),('Placa miorrelajante','Prótesis',54),
+ ('Implante','Implantes',60),('Raspaje y alisado (por cuadrante)','Periodoncia',70)
+) as x(nombre, cat, ord)
+where not exists (select 1 from public.prestaciones p where p.sede_id = s.id);
+select (select count(*) from public.prestaciones) as prestaciones, (select count(*) from public.planes) as planes, (select count(*) from public.pagos) as pagos;

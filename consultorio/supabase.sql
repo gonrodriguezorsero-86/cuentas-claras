@@ -534,3 +534,38 @@ cross join (values
 ) as x(nombre, cat, ord)
 where not exists (select 1 from public.prestaciones p where p.sede_id = s.id);
 select (select count(*) from public.prestaciones) as prestaciones, (select count(*) from public.planes) as planes, (select count(*) from public.pagos) as pagos;
+-- Etapa 4b · Ingresos y egresos, y reparto por profesional
+alter table public.pagos add column if not exists profesional_id uuid references public.profesionales(id) on delete set null;
+update public.pagos pg set profesional_id = pl.profesional_id from public.planes pl where pg.plan_id = pl.id and pg.profesional_id is null;
+alter table public.profesionales add column if not exists porcentaje numeric check (porcentaje between 0 and 100);
+create table if not exists public.movimientos (
+  id uuid primary key default gen_random_uuid(),
+  sede_id text not null references public.sedes(id),
+  fecha date not null default current_date,
+  tipo text not null check (tipo in ('ingreso','egreso')),
+  categoria text not null default '',
+  concepto text not null default '',
+  monto numeric not null check (monto > 0),
+  medio text not null default 'Efectivo',
+  profesional_id uuid references public.profesionales(id) on delete set null,
+  creado_por uuid default auth.uid(),
+  creado timestamptz not null default now()
+);
+create index if not exists movimientos_sede on public.movimientos (sede_id, fecha desc);
+alter table public.movimientos enable row level security;
+drop policy if exists solo_admin on public.movimientos;
+create policy solo_admin on public.movimientos for all to authenticated using (public.es_admin()) with check (public.es_admin());
+grant select, insert, update, delete on public.movimientos to authenticated;
+grant all on public.movimientos to service_role;
+
+-- números privados de cada usuario (solo los ve su dueño, ni siquiera otro administrador)
+create table if not exists public.mis_numeros (
+  user_id uuid primary key references auth.users(id) on delete cascade default auth.uid(),
+  datos jsonb not null default '{}'::jsonb,
+  actualizado timestamptz not null default now()
+);
+alter table public.mis_numeros enable row level security;
+drop policy if exists solo_yo on public.mis_numeros;
+create policy solo_yo on public.mis_numeros for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+grant select, insert, update, delete on public.mis_numeros to authenticated;
+select 'listo' as estado, (select count(*) from public.movimientos) as movimientos;

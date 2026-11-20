@@ -240,6 +240,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
       <button role="tab" data-v="pacientes" aria-selected="false">Pacientes</button>
       <button role="tab" data-v="pendientes" aria-selected="false">Pendientes <span class="badge" id="pend-n" hidden></span></button>
       <button role="tab" data-v="caja" aria-selected="false">Caja</button>
+      <button role="tab" data-v="finanzas" aria-selected="false">Finanzas</button>
       <button role="tab" data-v="lab" aria-selected="false">Laboratorio</button>
       <button role="tab" data-v="ajustes" aria-selected="false">Ajustes</button>
     </nav>
@@ -297,6 +298,44 @@ dialog form{display:flex;flex-direction:column;gap:12px}
       <div class="pcols">
         <div class="card"><h3 id="cj-ttl">Cobros</h3><div id="cj-tot" style="margin:8px 0"></div><div class="tw"><table class="t"><thead><tr><th>Fecha</th><th>Paciente</th><th class="desk-only">Concepto</th><th>Medio</th><th style="text-align:right">Monto</th></tr></thead><tbody id="cj-list"></tbody></table></div></div>
         <div class="card"><h3>Saldos a cobrar</h3><p class="hint">Lo realizado de planes aceptados menos lo pagado.</p><div id="cj-saldos" style="margin-top:6px"></div></div>
+      </div>
+    </section>
+
+    <!-- FINANZAS -->
+    <section id="v-finanzas" hidden>
+      <div class="toolbar">
+        <div class="sw" id="fn-vista"><button data-v="mov" class="on n">Ingresos y egresos</button><button data-v="mis">Mis números 🔒</button></div>
+        <div class="seg" id="fn-f"><button data-f="mes" class="on">Este mes</button><button data-f="mesant">Mes anterior</button><button data-f="anio">Año</button><button data-f="rango">Fechas</button></div>
+        <span id="fn-rango" hidden><input type="date" id="fn-d" style="width:auto"> a <input type="date" id="fn-h" style="width:auto"></span>
+        <span style="flex:1"></span>
+        <span id="fn-acc"><button class="btn ghost" id="fn-csv">Descargar planilla</button><button class="btn ghost" id="fn-ing">+ Ingreso</button><button class="btn" id="fn-egr">+ Egreso</button></span>
+      </div>
+      <p class="hint" id="fn-aviso" hidden style="color:var(--bad)"></p>
+      <div id="fn-mov">
+        <div class="pl-res" id="fn-res"></div>
+        <div class="pcols" style="margin-top:12px">
+          <div class="card"><h3>Lo que le corresponde a cada profesional</h3><p class="hint">Cobros de pacientes según quién hizo el trabajo, con el % de cada uno (se configura en Ajustes → Profesionales).</p><div class="tw" style="margin-top:6px"><table class="t"><thead><tr><th>Profesional</th><th style="text-align:right">Cobrado</th><th style="text-align:right">%</th><th style="text-align:right">Le toca</th><th style="text-align:right" class="desk-only">Gastos a su cargo</th><th style="text-align:right">A pagarle</th><th style="text-align:right" class="desk-only">Queda al consultorio</th></tr></thead><tbody id="fn-prof"></tbody></table></div></div>
+          <div class="card"><h3>Egresos por categoría</h3><div id="fn-cat" style="margin-top:6px"></div></div>
+        </div>
+        <div class="card" style="margin-top:12px"><h3>Movimientos</h3><div class="tw" style="margin-top:6px"><table class="t"><thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th class="desk-only">Profesional</th><th class="desk-only">Medio</th><th style="text-align:right">Monto</th><th></th></tr></thead><tbody id="fn-list"></tbody></table></div></div>
+      </div>
+      <div id="fn-mis" hidden>
+        <p class="hint">Esta página es privada: lo que cargues acá lo ves solo vos con tu usuario. Los números reales salen de tus cobros y tus turnos.</p>
+        <div class="pl-res" id="mn-res" style="margin-top:8px"></div>
+        <div class="pcols" style="margin-top:12px">
+          <div class="card"><h3>Tus datos</h3>
+            <form id="f-mis" style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+              <div class="row"><label>Horas de atención por semana<input name="horas_sem" type="number" min="0" step="0.5" inputmode="decimal"></label><label>Semanas de vacaciones al año<input name="vac" type="number" min="0" step="1" inputmode="numeric"></label></div>
+              <div class="row"><label>Impuestos (% de lo que cobrás)<input name="imp" type="number" min="0" max="80" step="0.5" inputmode="decimal" placeholder="Ej: 5"></label><label>Materiales (% de lo que cobrás)<input name="mat" type="number" min="0" max="80" step="0.5" inputmode="decimal" placeholder="Ej: 10"></label></div>
+              <div><span class="hint" style="font-size:13px">Gastos fijos del consultorio que pagás vos (por mes)</span><table class="capas"><tbody id="mn-fijos"></tbody></table><button type="button" class="link" data-add="fijos" style="font-size:13px">+ Agregar gasto</button>
+                <label class="chk" style="font-size:13px;margin-top:4px"><input type="checkbox" name="usar_egresos"> Sumar también los egresos cargados a mi nombre en Finanzas</label></div>
+              <div><span class="hint" style="font-size:13px">Gastos personales que querés cubrir (por mes)</span><table class="capas"><tbody id="mn-pers"></tbody></table><button type="button" class="link" data-add="pers" style="font-size:13px">+ Agregar gasto</button></div>
+              <label>Ahorro que querés por mes<input name="ahorro" type="number" min="0" step="1000" inputmode="numeric"></label>
+              <p class="hint" id="mn-est"></p>
+            </form>
+          </div>
+          <div class="card"><h3>Cómo vas</h3><div id="mn-out" style="margin-top:6px"></div></div>
+        </div>
       </div>
     </section>
 
@@ -546,11 +585,22 @@ dialog form{display:flex;flex-direction:column;gap:12px}
   <p class="hint" id="pg-pac"></p>
   <div class="row"><label>Fecha<input name="fecha" type="date" required></label><label>Monto ($)<input name="monto" type="number" step="1" min="1" inputmode="numeric" required></label></div>
   <div class="row"><label>Medio de pago<select name="medio"><option>Efectivo</option><option>Transferencia</option><option>Débito</option><option>Crédito</option><option>Mercado Pago</option><option>Obra social</option><option>Otro</option></select></label><label>Plan<select name="plan_id"></select></label></div>
-  <label>Concepto<input name="concepto" autocomplete="off" placeholder="Ej: anticipo, seña, 2ª cuota"></label>
+  <div class="row"><label>Concepto<input name="concepto" autocomplete="off" placeholder="Ej: anticipo, seña, 2ª cuota"></label><label>Lo atendió<select name="profesional_id"></select></label></div>
   <label class="chk" style="font-size:13px"><input type="checkbox" name="recibo" checked> Imprimir recibo al guardar</label>
   <div class="dacts"><button type="button" class="btn ghost" id="pg-cancel">Cancelar</button><button class="btn">Guardar pago</button></div>
 </form></dialog>
 <datalist id="dl-prest"></datalist>
+<dialog id="d-mov"><form id="f-mov">
+  <h2 id="mv-ttl">Egreso</h2>
+  <div class="row"><label>Fecha<input name="fecha" type="date" required></label><label>Monto ($)<input name="monto" type="number" min="1" step="1" inputmode="numeric" required></label></div>
+  <div class="row"><label>Categoría<input name="categoria" list="dl-cat-egr" autocomplete="off" required></label><label>Medio<select name="medio"><option>Efectivo</option><option>Transferencia</option><option>Débito</option><option>Crédito</option><option>Mercado Pago</option><option>Otro</option></select></label></div>
+  <label>Detalle<input name="concepto" autocomplete="off" placeholder="Ej: luz de noviembre, resinas, laboratorio G3"></label>
+  <label><span id="mv-prof-l">A cargo de</span><select name="profesional_id"></select></label>
+  <p class="hint" id="mv-hint"></p>
+  <div class="dacts"><button type="button" class="btn ghost" id="mv-cancel">Cancelar</button><button class="btn">Guardar</button></div>
+</form></dialog>
+<datalist id="dl-cat-egr"><option>Alquiler</option><option>Servicios (luz, gas, agua, internet)</option><option>Sueldos y cargas</option><option>Materiales dentales</option><option>Laboratorio</option><option>Equipamiento</option><option>Mantenimiento</option><option>Impuestos</option><option>Contador</option><option>Publicidad</option><option>Software y sistemas</option><option>Limpieza</option><option>Seguros y matrícula</option><option>Otros</option></datalist>
+<datalist id="dl-cat-ing"><option>Obra social</option><option>Venta de productos</option><option>Laboratorio G3</option><option>Docencia / cursos</option><option>Otros</option></datalist>
 <dialog id="d-ia">
   <h2>Análisis de foto con IA</h2>
   <p class="hint">La IA sugiere lo que ve en la foto. <b>Son sugerencias:</b> revisalas vos antes de pasarlas al odontograma.</p>
@@ -707,6 +757,7 @@ async function cargarBase(){
   }
   $$('nav.tabs button[data-v=lab]').forEach(b=>b.hidden = perfil.rol!=='admin');
   $$('nav.tabs button[data-v=caja]').forEach(b=>b.hidden = perfil.rol==='profesional');
+  $$('nav.tabs button[data-v=finanzas]').forEach(b=>b.hidden = perfil.rol==='secretaria');
   aplicarSede();
 }
 function aplicarSede(){
@@ -734,12 +785,13 @@ $$('nav.tabs button').forEach(b => b.onclick = () => irA(b.dataset.v));
 async function irA(v){
   vista=v; LS.set('rn_tab',v);
   $$('nav.tabs button').forEach(b=>b.setAttribute('aria-selected', b.dataset.v===v));
-  ['agenda','pacientes','pendientes','caja','lab','ajustes'].forEach(x=>$('#v-'+x).hidden = x!==v);
+  ['agenda','pacientes','pendientes','caja','finanzas','lab','ajustes'].forEach(x=>$('#v-'+x).hidden = x!==v);
   try{
     if (v==='agenda') await pintarAgenda();
     if (v==='pacientes') { if(!S.pacientes.size) await cargarPacientes(); pintarPacientes(); }
     if (v==='pendientes') await pintarPend();
     if (v==='caja') await pintarCaja();
+    if (v==='finanzas') await pintarFinanzas();
     if (v==='lab') await pintarLab();
     if (v==='ajustes') await pintarAjustes();
   }catch(e){ toast(errMsg(e), true); }
@@ -1825,6 +1877,9 @@ function abrirPago(planId, sugerido){
   const vig=(S.planes||[]).filter(p=>p.estado!=='rechazado');
   f.plan_id.innerHTML='<option value="">Sin plan (pago suelto)</option>'+vig.map(p=>`<option value="${p.id}">${esc(p.titulo)} · ${$$$(totalPlan(p))}</option>`).join('');
   f.plan_id.value = planId || (vig.find(p=>VIGENTE.includes(p.estado))||vig[0]||{}).id || '';
+  f.profesional_id.innerHTML = '<option value="">—</option>' + (S.profAll||[]).filter(p=>p.sede_id===(fiPac.sede_id||sedeId)).map(p=>`<option value="${p.id}">${esc(nombreProf(p))}</option>`).join('');
+  const plSel=(S.planes||[]).find(p=>p.id===f.plan_id.value); f.profesional_id.value = (plSel&&plSel.profesional_id) || perfil.profesional_id || '';
+  f.plan_id.onchange=()=>{ const p=(S.planes||[]).find(x=>x.id===f.plan_id.value); if (p&&p.profesional_id) f.profesional_id.value=p.profesional_id; };
   $('#d-pago').showModal(); setTimeout(()=>f.monto.focus(),50);
 }
 $('#pl-pago').onclick=()=>abrirPago(null, 0);
@@ -1833,7 +1888,10 @@ $('#f-pago').onsubmit=async e=>{
   e.preventDefault(); const f=e.target, monto=+f.monto.value;
   if (!monto){ toast('Poné el monto.', true); return; }
   try{
-    const pg = await q(sb.from('pagos').insert({ sede_id: fiPac.sede_id||sedeId, paciente_id: fiPac.id, plan_id: f.plan_id.value||null, fecha: f.fecha.value, monto, medio: f.medio.value, concepto: f.concepto.value.trim() }).select().single());
+    const fila = { sede_id: fiPac.sede_id||sedeId, paciente_id: fiPac.id, plan_id: f.plan_id.value||null, fecha: f.fecha.value, monto, medio: f.medio.value, concepto: f.concepto.value.trim(), profesional_id: f.profesional_id.value||null };
+    let pg;
+    try{ pg = await q(sb.from('pagos').insert(fila).select().single()); }
+    catch(e1){ if (!esFaltaTabla(e1)) throw e1; delete fila.profesional_id; pg = await q(sb.from('pagos').insert(fila).select().single()); toast('Pago guardado, pero sin profesional: '+FALTA_SQL, true); }
     const pl=(S.planes||[]).find(p=>p.id===pg.plan_id); if (pl && ['borrador','presentado'].includes(pl.estado)){ pl.estado='aceptado'; await q(sb.from('planes').update({ estado:'aceptado' }).eq('id', pl.id)); }
     $('#d-pago').close(); toast('Pago registrado: '+$$$(monto)+'.');
     if (f.recibo.checked) imprimirRecibo(pg);
@@ -1892,6 +1950,155 @@ $('#cj-csv').onclick=()=>{
   const csv='﻿'+filas.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); const [d,h]=rangoCaja(); a.download=`caja-${(S.cfg.sede||'').toLowerCase()}-${d}_a_${h}.csv`; a.click();
 };
+
+/* ---------- FINANZAS: ingresos y egresos, reparto y mis números ---------- */
+let fnVista='mov', fnF='mes', mnDatos=null, mnT=null, mvTipo='egreso';
+const FALTA_SQL = 'Falta actualizar la base de datos para esta parte: hay que correr el bloque "Etapa 4b" de supabase.sql en Supabase → SQL Editor.';
+const esFaltaTabla = e => /movimientos|mis_numeros|profesional_id|porcentaje|schema cache|does not exist/i.test((e&&e.message)||'');
+function rangoFn(){
+  const h=new Date();
+  if (fnF==='mes') return [ymd(new Date(h.getFullYear(),h.getMonth(),1)), ymd(new Date(h.getFullYear(),h.getMonth()+1,0))];
+  if (fnF==='mesant') return [ymd(new Date(h.getFullYear(),h.getMonth()-1,1)), ymd(new Date(h.getFullYear(),h.getMonth(),0))];
+  if (fnF==='anio') return [h.getFullYear()+'-01-01', h.getFullYear()+'-12-31'];
+  return [$('#fn-d').value||ymd(addDays(h,-30)), $('#fn-h').value||ymd(h)];
+}
+const diasRango = ([d,h]) => Math.round((new Date(h+'T12:00:00')-new Date(d+'T12:00:00'))/864e5)+1;
+async function pintarFinanzas(){
+  const admin = perfil.rol==='admin';
+  if (!admin) fnVista='mis';
+  $('#fn-vista').hidden = !admin;
+  $$('#fn-vista button').forEach(b=>{ const on=b.dataset.v===fnVista; b.classList.toggle('on',on); b.classList.toggle('n',on); });
+  $('#fn-mov').hidden = fnVista!=='mov'; $('#fn-mis').hidden = fnVista!=='mis'; $('#fn-acc').hidden = fnVista!=='mov';
+  $('#fn-rango').hidden = fnF!=='rango';
+  if (fnF==='rango' && !$('#fn-d').value){ $('#fn-d').value=ymd(addDays(new Date(),-30)); $('#fn-h').value=ymd(new Date()); }
+  $('#fn-aviso').hidden=true;
+  if (!S.pacientes.size) await cargarPacientes();
+  try{ if (fnVista==='mov') await pintarMovimientos(); else await pintarMisNumeros(); }
+  catch(e){ if (esFaltaTabla(e)){ $('#fn-aviso').textContent=FALTA_SQL; $('#fn-aviso').hidden=false; } else throw e; }
+}
+$('#fn-vista').addEventListener('click', e=>{ const b=e.target.closest('[data-v]'); if(!b) return; fnVista=b.dataset.v; pintarFinanzas().catch(err=>toast(errMsg(err),true)); });
+$('#fn-f').addEventListener('click', e=>{ if(!e.target.dataset.f) return; fnF=e.target.dataset.f; $$('#fn-f button').forEach(b=>b.classList.toggle('on', b===e.target)); pintarFinanzas().catch(err=>toast(errMsg(err),true)); });
+['#fn-d','#fn-h'].forEach(x=>$(x).addEventListener('change', ()=>pintarFinanzas().catch(err=>toast(errMsg(err),true))));
+const nomProfId = id => id ? (nombreProf(profById(id)) || 'Profesional') : 'Sin asignar';
+async function pintarMovimientos(){
+  const [d,h]=rangoFn();
+  const [pagos, movs] = await Promise.all([
+    q(sb.from('pagos').select('*').eq('sede_id', sedeId).gte('fecha', d).lte('fecha', h)),
+    q(sb.from('movimientos').select('*').eq('sede_id', sedeId).gte('fecha', d).lte('fecha', h))
+  ]);
+  const ingOtros = movs.filter(m=>m.tipo==='ingreso'), egr = movs.filter(m=>m.tipo==='egreso');
+  const tCobros = pagos.reduce((s,p)=>s+(+p.monto||0),0), tIng = tCobros + ingOtros.reduce((s,m)=>s+(+m.monto||0),0), tEgr = egr.reduce((s,m)=>s+(+m.monto||0),0);
+  // reparto por profesional
+  const prof={};
+  for (const p of pagos){ const k=p.profesional_id||''; (prof[k]=prof[k]||{ cob:0, gas:0 }).cob += +p.monto||0; }
+  for (const m of egr) if (m.profesional_id){ (prof[m.profesional_id]=prof[m.profesional_id]||{ cob:0, gas:0 }).gas += +m.monto||0; }
+  let aProfs=0;
+  const filas = Object.entries(prof).sort((a,b)=>b[1].cob-a[1].cob).map(([id,x])=>{
+    const pr=profById(id), pct = id ? (pr && pr.porcentaje!=null ? +pr.porcentaje : 100) : 0, toca=Math.round(x.cob*pct/100), pagar=toca-x.gas; aProfs+=pagar;
+    return `<tr><td><b>${esc(nomProfId(id))}</b>${id && pr && pr.porcentaje==null?'<div class="hint">sin % cargado: se toma 100%</div>':''}</td><td style="text-align:right">${$$$(x.cob)}</td><td style="text-align:right">${id?pct+'%':'—'}</td><td style="text-align:right">${$$$(toca)}</td><td style="text-align:right" class="desk-only">${x.gas?'− '+$$$(x.gas):''}</td><td style="text-align:right"><b>${$$$(pagar)}</b></td><td style="text-align:right" class="desk-only">${$$$(x.cob-toca)}</td></tr>`; });
+  $('#fn-prof').innerHTML = filas.join('') || '<tr><td colspan="7" class="hint" style="padding:12px">No hay cobros en este período.</td></tr>';
+  const resultado = tIng - tEgr, consultorio = tIng - tEgr - Math.max(0, aProfs);
+  $('#fn-res').innerHTML = `<div><span>Ingresos</span><b style="color:var(--ok)">${$$$(tIng)}</b><span>${$$$(tCobros)} de pacientes${ingOtros.length?' · '+$$$(tIng-tCobros)+' otros':''}</span></div>
+    <div><span>Egresos</span><b style="color:var(--bad)">${$$$(tEgr)}</b><span>${egr.length} ${egr.length===1?'gasto':'gastos'}</span></div>
+    <div><span>Resultado</span><b style="${resultado<0?'color:var(--bad)':''}">${resultado<0?'− ':''}${$$$(Math.abs(resultado))}</b><span>ingresos − egresos</span></div>
+    <div><span>A pagar a profesionales</span><b>${$$$(Math.max(0,aProfs))}</b><span>queda al consultorio ${$$$(consultorio)}</span></div>`;
+  const cat={}; egr.forEach(m=>cat[m.categoria||'Otros']=(cat[m.categoria||'Otros']||0)+(+m.monto||0));
+  const maxC=Math.max(1,...Object.values(cat));
+  $('#fn-cat').innerHTML = Object.keys(cat).length ? Object.entries(cat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(c)}</span><b>${$$$(v)}</b></div><div style="height:6px;background:#efeee8;border-radius:4px;margin-top:3px"><div style="height:6px;width:${Math.round(v/maxC*100)}%;background:var(--bad);border-radius:4px;opacity:.75"></div></div></div>`).join('') : '<p class="hint">Sin egresos cargados en este período.</p>';
+  const lista = [
+    ...pagos.map(p=>({ f:p.fecha, c:p.creado, tipo:'cobro', det:nombrePac(S.pacientes.get(p.paciente_id))+(p.concepto?' · '+p.concepto:''), prof:p.profesional_id, medio:p.medio, monto:+p.monto, id:p.id })),
+    ...movs.map(m=>({ f:m.fecha, c:m.creado, tipo:m.tipo, det:(m.categoria||'')+(m.concepto?' · '+m.concepto:''), prof:m.profesional_id, medio:m.medio, monto:+m.monto, id:m.id }))
+  ].sort((a,b)=>(b.f+b.c).localeCompare(a.f+a.c));
+  S.fnLista = lista;
+  $('#fn-list').innerHTML = lista.length ? lista.map(x=>{ const f=new Date(x.f+'T12:00:00'), egr=x.tipo==='egreso';
+    return `<tr><td>${f.getDate()}/${f.getMonth()+1}</td><td><span class="pill ${egr?'bad':'ok'}">${x.tipo==='cobro'?'Cobro':egr?'Egreso':'Ingreso'}</span></td><td>${esc(x.det)}</td><td class="desk-only">${x.prof?esc(nomProfId(x.prof)):''}</td><td class="desk-only">${esc(x.medio||'')}</td><td style="text-align:right;${egr?'color:var(--bad)':''}">${egr?'− ':''}${$$$(x.monto)}</td><td>${x.tipo!=='cobro'?`<button class="link" data-del="${x.id}" title="Borrar">✕</button>`:''}</td></tr>`; }).join('')
+    : '<tr><td colspan="7" class="hint" style="padding:12px">Sin movimientos en este período.</td></tr>';
+}
+$('#fn-list').addEventListener('click', async e=>{ const id=e.target.dataset.del; if(!id) return; if (e.target.dataset.c!=='1'){ e.target.dataset.c='1'; e.target.textContent='¿Borrar?'; return; } try{ await q(sb.from('movimientos').delete().eq('id', id)); toast('Borrado.'); pintarFinanzas(); }catch(err){ toast(errMsg(err), true); } });
+function abrirMov(tipo){
+  mvTipo=tipo; const f=$('#f-mov'); f.reset();
+  $('#mv-ttl').textContent = tipo==='egreso' ? 'Nuevo egreso' : 'Nuevo ingreso (que no es cobro de paciente)';
+  f.categoria.setAttribute('list', tipo==='egreso'?'dl-cat-egr':'dl-cat-ing');
+  $('#mv-prof-l').textContent = tipo==='egreso' ? 'A cargo de' : 'De qué profesional';
+  $('#mv-hint').textContent = tipo==='egreso' ? 'Si el gasto es de un profesional (por ejemplo el laboratorio de su paciente), elegilo: se le descuenta de lo que le toca.' : 'Los cobros a pacientes ya entran solos desde los pagos.';
+  f.profesional_id.innerHTML = `<option value="">${tipo==='egreso'?'Consultorio (todos)':'Consultorio'}</option>`+S.prof.map(p=>`<option value="${p.id}">${esc(nombreProf(p))}</option>`).join('');
+  f.fecha.value=ymd(new Date()); $('#d-mov').showModal(); setTimeout(()=>f.monto.focus(),50);
+}
+$('#fn-egr').onclick=()=>abrirMov('egreso');
+$('#fn-ing').onclick=()=>abrirMov('ingreso');
+$('#mv-cancel').onclick=()=>$('#d-mov').close();
+$('#f-mov').onsubmit=async e=>{
+  e.preventDefault(); const f=e.target;
+  try{ await q(sb.from('movimientos').insert({ sede_id:sedeId, tipo:mvTipo, fecha:f.fecha.value, monto:+f.monto.value, categoria:f.categoria.value.trim(), concepto:f.concepto.value.trim(), medio:f.medio.value, profesional_id:f.profesional_id.value||null }));
+    $('#d-mov').close(); toast(mvTipo==='egreso'?'Egreso cargado.':'Ingreso cargado.'); pintarFinanzas(); }
+  catch(err){ toast(esFaltaTabla(err)?FALTA_SQL:errMsg(err), true); }
+};
+$('#fn-csv').onclick=()=>{
+  const filas=[['Fecha','Tipo','Detalle','Profesional','Medio','Monto']].concat((S.fnLista||[]).map(x=>[x.f, x.tipo, x.det, x.prof?nomProfId(x.prof):'', x.medio||'', String((x.tipo==='egreso'?-1:1)*x.monto).replace('.',',')]));
+  const csv='﻿'+filas.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); const [d,h]=rangoFn(); a.download=`finanzas-${(S.cfg.sede||'').toLowerCase()}-${d}_a_${h}.csv`; a.click();
+};
+
+// mis números (privado)
+const mnDef = () => ({ horas_sem:'', vac:4, imp:'', mat:'', ahorro:'', usar_egresos:true, fijos:[{n:'Servicios',v:''},{n:'Materiales fijos',v:''},{n:'Contador',v:''}], pers:[{n:'Casa y familia',v:''}] });
+function filasGasto(k){ return (mnDatos[k]||[]).map((g,i)=>`<tr data-k="${k}" data-i="${i}"><td><input data-f="n" value="${esc(g.n||'')}" placeholder="Concepto"></td><td style="width:150px"><input data-f="v" type="number" min="0" step="1000" inputmode="numeric" value="${g.v===''||g.v==null?'':+g.v}" placeholder="$ por mes"></td><td style="width:26px"><button type="button" class="link" data-x="${k}:${i}">✕</button></td></tr>`).join(''); }
+async function pintarMisNumeros(){
+  const f=$('#f-mis');
+  if (!mnDatos){ const r = await q(sb.from('mis_numeros').select('*').maybeSingle()); mnDatos = Object.assign(mnDef(), (r&&r.datos)||{}); }
+  ['horas_sem','vac','imp','mat','ahorro'].forEach(k=>{ if (document.activeElement!==f[k]) f[k].value = mnDatos[k]??''; }); f.usar_egresos.checked=!!mnDatos.usar_egresos;
+  if (!f.contains(document.activeElement)){ $('#mn-fijos').innerHTML=filasGasto('fijos'); $('#mn-pers').innerHTML=filasGasto('pers'); }
+  await calcularMis();
+}
+async function calcularMis(){
+  const [d,h]=rangoFn(), hoyS=ymd(new Date()), enCurso = h>hoyS && d<=hoyS, dias=diasRango([d, enCurso?hoyS:h]), mesesP = dias/30.44, miProf = perfil.profesional_id;
+  const num = v => +String(v??'').replace(',','.')||0;
+  const sum = l => (l||[]).reduce((s,g)=>s+num(g.v),0);
+  let cobrado=0, horasAt=0, horasAg=0, egrMios=0, turnosAt=0;
+  if (miProf){
+    const [pagos, tur] = await Promise.all([
+      q(sb.from('pagos').select('monto,fecha').eq('profesional_id', miProf).gte('fecha', d).lte('fecha', h)),
+      q(sb.from('turnos').select('inicio,fin,estado').eq('profesional_id', miProf).gte('inicio', new Date(d+'T00:00:00').toISOString()).lte('inicio', new Date(h+'T23:59:59').toISOString()))
+    ]);
+    cobrado = pagos.reduce((s,p)=>s+(+p.monto||0),0);
+    for (const t of tur){ const hs=(new Date(t.fin)-new Date(t.inicio))/36e5; if (t.estado==='cancelado') continue; horasAg+=hs; if (t.estado==='atendido' || (t.estado!=='ausente' && new Date(t.fin)<new Date())){ horasAt+=hs; turnosAt++; } }
+    if (mnDatos.usar_egresos && perfil.rol==='admin'){ try{ egrMios = (await q(sb.from('movimientos').select('monto').eq('tipo','egreso').eq('profesional_id', miProf).gte('fecha', d).lte('fecha', h))).reduce((s,m)=>s+(+m.monto||0),0); }catch(e){} }
+  }
+  const pr = profById(miProf), pct = pr && pr.porcentaje!=null ? +pr.porcentaje : 100, miParte = cobrado*pct/100;
+  const horasSem = num(mnDatos.horas_sem), vac = num(mnDatos.vac), horasMes = horasSem*52*(1-Math.min(vac,52)/52)/12;
+  const imp=num(mnDatos.imp)/100, mat=num(mnDatos.mat)/100, fijos=sum(mnDatos.fijos), pers=sum(mnDatos.pers), ahorro=num(mnDatos.ahorro);
+  const necesMes = fijos+pers+ahorro, factor = Math.max(.05, 1-imp-mat);
+  const facturarMes = necesMes/factor, horaMin = horasMes ? (fijos/factor)/horasMes : 0, horaObj = horasMes ? facturarMes/horasMes : 0;
+  // período elegido, llevado a valores mensuales para comparar
+  const netoP = miParte*(1-imp-mat) - egrMios, gastosP = (fijos+pers)*mesesP, ahorroP = ahorro*mesesP, sobra = netoP - gastosP;
+  const valorHoraReal = horasAt ? miParte/horasAt : 0, ocup = horasMes ? Math.min(999, horasAg/(horasMes*mesesP)*100) : 0;
+  const faltaHoras = valorHoraReal ? Math.max(0, (facturarMes*mesesP - miParte)/valorHoraReal) : 0;
+  $('#mn-res').innerHTML = `<div><span>Tu parte cobrada</span><b>${$$$(miParte)}</b><span>${pct<100?pct+'% de '+$$$(cobrado):'en el período'}</span></div>
+    <div><span>Tu hora real</span><b>${valorHoraReal?$$$(valorHoraReal):'—'}</b><span>${horasAt?Math.round(horasAt*10)/10+' h atendidas · '+turnosAt+' turnos':'sin turnos atendidos'}</span></div>
+    <div><span>Tu hora objetivo</span><b>${horaObj?$$$(horaObj):'—'}</b><span>${horaMin?'mínimo para cubrir el consultorio '+$$$(horaMin):'cargá tus horas y gastos'}</span></div>
+    <div style="${sobra<0?'border-color:var(--bad)':'border-color:var(--ok)'}"><span>${sobra>=0?'Te sobra':'Te falta'}</span><b style="color:${sobra<0?'var(--bad)':'var(--ok)'}">${$$$(Math.abs(sobra))}</b><span>${sobra>=ahorroP&&ahorroP?'cubrís gastos y ahorro ✓':sobra>=0?'cubrís tus gastos'+(ahorroP?', falta para el ahorro':''):'para cubrir tus gastos'}</span></div>`;
+  const pctBar = (v,t) => t ? Math.max(2, Math.min(100, Math.round(v/t*100))) : 0;
+  $('#mn-out').innerHTML = !miProf ? '<p class="hint">Tu usuario no tiene una agenda propia vinculada, así que no hay cobros ni turnos tuyos para calcular.</p>' : `
+    <div class="item"><div class="t"><b>Para cubrir todo tenés que facturar</b><span>fijos + personales + ahorro, después de impuestos y materiales</span></div><b>${$$$(facturarMes)}/mes</b></div>
+    <div class="item"><div class="t"><b>Horas disponibles</b><span>${horasSem||0} h por semana, ${vac||0} semanas de vacaciones</span></div><b>${Math.round(horasMes)} h/mes</b></div>
+    <div class="item"><div class="t"><b>Ocupación de tu agenda</b><span>${Math.round(horasAg*10)/10} h con turnos en el período</span></div><b>${horasMes?Math.round(ocup)+'%':'—'}</b></div>
+    <div style="margin:10px 0 4px;font-size:13px">Facturado en el período vs. lo que necesitás</div>
+    <div style="height:12px;background:#efeee8;border-radius:6px;overflow:hidden"><div style="height:12px;width:${pctBar(miParte, facturarMes*mesesP)}%;background:${miParte>=facturarMes*mesesP?'var(--ok)':'var(--acc)'}"></div></div>
+    <div class="hint" style="margin-top:3px">${$$$(miParte)} de ${$$$(facturarMes*mesesP)}${enCurso?' (lo que necesitás hasta hoy, '+Math.round(dias)+' días)':mesesP<0.95||mesesP>1.05?' (necesidad ajustada a '+Math.round(dias)+' días)':''}</div>
+    ${faltaHoras>0.5?`<div class="item" style="margin-top:8px"><div class="t"><b>A tu valor hora actual te faltan</b><span>para llegar a lo que necesitás en este período</span></div><b>${Math.round(faltaHoras)} h</b></div>`:''}
+    ${valorHoraReal && horaObj ? `<div class="item"><div class="t"><b>${valorHoraReal>=horaObj?'Tu hora real está por encima del objetivo':'Tu hora real está por debajo del objetivo'}</b><span>${valorHoraReal>=horaObj?'':'subir precios o llenar más la agenda'}</span></div><b style="color:${valorHoraReal>=horaObj?'var(--ok)':'var(--bad)'}">${valorHoraReal>=horaObj?'+':'−'}${$$$(Math.abs(valorHoraReal-horaObj))}/h</b></div>`:''}
+    <p class="hint" style="margin-top:8px">Cuenta como hora atendida cada turno ya pasado que no quedó como ausente ni cancelado.${egrMios?' Se restaron '+$$$(egrMios)+' de egresos a tu nombre.':''}</p>`;
+}
+$('#f-mis').addEventListener('input', e=>{
+  const t=e.target, tr=t.closest('tr[data-k]');
+  if (tr) mnDatos[tr.dataset.k][+tr.dataset.i][t.dataset.f] = t.value;
+  else if (t.name) mnDatos[t.name] = t.type==='checkbox' ? t.checked : t.value;
+  calcularMis().catch(()=>{}); guardarMis();
+});
+$('#f-mis').addEventListener('click', e=>{
+  if (e.target.dataset.add){ mnDatos[e.target.dataset.add].push({ n:'', v:'' }); $('#mn-'+e.target.dataset.add).innerHTML=filasGasto(e.target.dataset.add); guardarMis(); }
+  if (e.target.dataset.x){ const [k,i]=e.target.dataset.x.split(':'); mnDatos[k].splice(+i,1); $('#mn-'+k).innerHTML=filasGasto(k); calcularMis(); guardarMis(); }
+});
+function guardarMis(){ clearTimeout(mnT); $('#mn-est').textContent='Guardando…'; mnT=setTimeout(async()=>{ try{ await q(sb.from('mis_numeros').upsert({ user_id: me.id, datos: mnDatos })); $('#mn-est').textContent='Guardado ✓ (solo lo ves vos)'; }catch(e){ $('#mn-est').textContent = esFaltaTabla(e)?FALTA_SQL:'No se pudo guardar: '+errMsg(e); } }, 700); }
 
 /* ---------- ARANCELES (Ajustes) ---------- */
 let arcT={};
@@ -1966,7 +2173,7 @@ async function pintarAjustes(){
   $('#cfg-dias').innerHTML=[1,2,3,4,5,6,0].map(d=>`<label class="chk"><input type="checkbox" value="${d}" ${(S.cfg.dias||[]).includes(d)?'checked':''}> ${DIAS3[d]}</label>`).join('');
   const t=$('#cfg-tpl'); ['recordatorio','cumpleanos','control'].forEach(k=>t[k].value=S.tpl[k]||'');
   $('#prof-add').hidden = perfil.rol==='profesional';
-  $('#prof-list').innerHTML = S.prof.map(p=>`<div class="item" data-id="${p.id}"><div class="t" style="display:flex;gap:8px;align-items:center"><span style="width:14px;height:14px;border-radius:4px;background:${esc(p.color)};flex:none"></span><b>${esc(nombreProf(p))}</b></div><span>${p.activo?'':'<span class="pill">inactivo</span> '}${perfil.rol==='profesional'?'':`<button class="link" data-a="tog">${p.activo?'Desactivar':'Activar'}</button>`}</span></div>`).join('') || `<p class="hint">Todavía no hay profesionales en ${esc(S.cfg.sede||'esta sede')}.</p>`;
+  $('#prof-list').innerHTML = S.prof.map(p=>`<div class="item" data-id="${p.id}"><div class="t" style="display:flex;gap:8px;align-items:center"><span style="width:14px;height:14px;border-radius:4px;background:${esc(p.color)};flex:none"></span><b>${esc(nombreProf(p))}</b></div><span>${perfil.rol==='admin'?`<label class="hint" style="display:inline-flex;gap:4px;align-items:center;margin-right:8px" title="Qué porcentaje de lo que cobra se lleva el profesional">se lleva <input data-pct="${p.id}" type="number" min="0" max="100" value="${p.porcentaje??''}" placeholder="100" style="width:64px;padding:4px 6px">%</label>`:''}${p.activo?'':'<span class="pill">inactivo</span> '}${perfil.rol==='profesional'?'':`<button class="link" data-a="tog">${p.activo?'Desactivar':'Activar'}</button>`}</span></div>`).join('') || `<p class="hint">Todavía no hay profesionales en ${esc(S.cfg.sede||'esta sede')}.</p>`;
   $('#usr-card').hidden = !admin;
   if (admin){
     S.personal = await q(sb.from('personal').select('*').order('creado'));
@@ -2045,6 +2252,9 @@ $('#cfg-tpl').onsubmit=async e=>{ e.preventDefault(); const t=e.target; const v=
   try{ await q(sb.from('config').upsert({clave:'plantillas', valor:v})); S.tpl=v; toast('Mensajes guardados.'); }catch(err){ toast(errMsg(err), true); } };
 $('#prof-add').onsubmit=async e=>{ e.preventDefault(); const f=e.target;
   try{ const p=await q(sb.from('profesionales').insert({titulo:f.titulo.value.trim(), nombre:f.nombre.value.trim(), color:f.color.value, sede_id:sedeId}).select().single()); S.profAll.push(p); S.prof.push(p); f.nombre.value=''; pintarProfSelects(); pintarAjustes(); toast('Profesional agregado a '+(S.cfg.sede||'la sede')+'.'); }catch(err){ toast(errMsg(err), true); } };
+let pctT={};
+$('#prof-list').addEventListener('input', e=>{ const id=e.target.dataset.pct; if(!id) return; const p=profById(id); const v=e.target.value===''?null:Math.max(0,Math.min(100,+e.target.value)); if(p) p.porcentaje=v;
+  clearTimeout(pctT[id]); pctT[id]=setTimeout(async()=>{ try{ await q(sb.from('profesionales').update({ porcentaje:v }).eq('id', id)); toast('Porcentaje guardado.'); }catch(err){ toast(esFaltaTabla(err)?FALTA_SQL:errMsg(err), true); } }, 700); });
 $('#prof-list').addEventListener('click', async e=>{ if(e.target.dataset.a!=='tog') return; const p=profById(e.target.closest('.item').dataset.id);
   try{ await q(sb.from('profesionales').update({activo:!p.activo}).eq('id',p.id)); p.activo=!p.activo; pintarProfSelects(); pintarAjustes(); }catch(err){ toast(errMsg(err), true); } });
 $('#usr-list').addEventListener('change', e=>{ if(e.target.dataset.k==='rol'){ const card=e.target.closest('.card'); const adm=e.target.value==='admin'; card.querySelectorAll('input[data-sede]').forEach(i=>{ i.disabled=adm; if(adm) i.checked=true; }); } });

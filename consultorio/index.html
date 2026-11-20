@@ -193,7 +193,7 @@ dialog form{display:flex;flex-direction:column;gap:12px}
     <button type="button" class="link" id="l-toggle">Crear una cuenta nueva</button>
     <p class="hint" id="l-msg"></p>
     <button type="button" class="btn ghost" id="l-instalar" hidden>Instalar como app en esta compu</button>
-    <button type="button" class="link" id="l-reset" style="font-size:12px;color:var(--mut)">Cambiar la base de datos conectada</button>
+    <button type="button" class="link" id="l-reset" hidden style="font-size:12px;color:var(--mut)">Cambiar la base de datos conectada</button>
   </form>
 </section>
 
@@ -520,7 +520,7 @@ $('#s-ok').onclick = async () => {
   if (!/^https:\/\/.+/.test(url) || key.length<20) { toast('Revisá la URL y la clave.', true); return; }
   conn={url,key}; LS.set('rn_conn',conn); conectar(); iniciar();
 };
-$('#l-reset').onclick = () => { localStorage.removeItem('rn_conn'); location.reload(); };
+$('#l-reset').hidden = !!(CFG && CFG.url); $('#l-reset').onclick = () => { localStorage.removeItem('rn_conn'); location.reload(); };
 
 /* ---------- ingreso ---------- */
 let modoAlta = false;

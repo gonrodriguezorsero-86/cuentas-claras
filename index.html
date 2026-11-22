@@ -163,7 +163,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-vis
     <div class="backup">
       <button class="btn" id="csv" type="button">Exportar a Excel (CSV)</button>
       <button class="btn" id="bk" type="button">Copia de seguridad</button>
-      <button class="btn" id="rs" type="button">Restaurar copia</button>
+      <button class="btn" id="rs" type="button">Importar copia</button>
       <input type="file" id="rsf" accept=".json,application/json" hidden>
       <span class="note" id="bknote"></span>
     </div>
@@ -409,10 +409,14 @@ $("#rsf").onchange=async e=>{
     pendingRestore=j;
     setStatus("");
     const st=$("#status"); st.innerHTML="";
-    st.append(`La copia tiene ${j.movimientos.length} movimientos y reemplaza los ${items.length} actuales. `);
-    const y=document.createElement("button");y.className="btn primary";y.textContent="Restaurar";
+    const have=new Set(items.map(x=>x.id));
+    const nuevos=j.movimientos.filter(x=>x&&x.id&&!have.has(x.id)&&Number(x.monto)>0&&/^\d{4}-\d{2}-\d{2}$/.test(x.fecha||""));
+    pendingRestore.nuevos=nuevos;
+    if(!nuevos.length){setStatus("Esa copia no tiene movimientos nuevos: ya están todos cargados.");pendingRestore=null;return}
+    st.append(`Se van a sumar ${nuevos.length} movimiento${nuevos.length>1?"s":""} nuevo${nuevos.length>1?"s":""}. Los que ya tenés no se tocan. `);
+    const y=document.createElement("button");y.className="btn primary";y.textContent="Sumar";
     const n=document.createElement("button");n.className="btn";n.textContent="Cancelar";n.style.marginLeft="6px";
-    y.onclick=async()=>{await store.replaceAll(pendingRestore.movimientos);if(pendingRestore.aprendido){learned=pendingRestore.aprendido;try{localStorage.setItem(LEARN_K,JSON.stringify(learned))}catch(e){}}pendingRestore=null;setStatus("Copia restaurada.")};
+    y.onclick=async()=>{const n=pendingRestore.nuevos.length;await store.replaceAll(store.all().concat(pendingRestore.nuevos));if(pendingRestore.aprendido){learned={...pendingRestore.aprendido,...learned};try{localStorage.setItem(LEARN_K,JSON.stringify(learned))}catch(e){}}pendingRestore=null;setStatus(`Listo, se sumaron ${n} movimiento${n>1?"s":""}.`)};
     n.onclick=()=>{pendingRestore=null;setStatus("")};
     st.append(y,n); window.scrollTo({top:0,behavior:"smooth"});
   }catch(err){setStatus("Ese archivo no es una copia de Cuentas Claras.",true)}
